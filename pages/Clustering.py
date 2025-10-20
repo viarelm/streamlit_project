@@ -41,8 +41,7 @@ with col2:
 st.header("2. Input Data & Fitur")
 data = None
 
-# --- PERUBAHAN DI SINI ---
-# Mapping Fitur (sesuai permintaan baru)
+# Mapping Fitur
 mapping_fitur = {
     "Indeks Pembangunan Manusia Laki-Laki": "IPM_L",
     "Indeks Pembangunan Manusia Perempuan": "IPM_P",
@@ -53,7 +52,7 @@ mapping_fitur = {
 
 }
 
-# Logika untuk memuat data (sesuai permintaan baru)
+# Logika untuk memuat data
 if data_source_option == "Gunakan Contoh Dataset":
     dataset_path = "contoh_dataset/dataset.xlsx"
     if os.path.exists(dataset_path):
@@ -64,7 +63,6 @@ else:
     uploaded_file = st.file_uploader("Unggah file Anda (.xlsx atau .csv)", type=['xlsx', 'csv'])
     if uploaded_file:
         data = load_data(uploaded_file)
-# --- AKHIR PERUBAHAN ---
 
 # Tombol download template
 template_data = get_template_file()
@@ -76,13 +74,10 @@ if template_data:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-# --- PERUBAHAN DI SINI ---
 # Standardisasi kolom identifier
-# Ini akan mengubah 'label' dari dataset.xlsx menjadi 'Nama Wilayah'
 if data is not None:
     if "Label" in data.columns:
         data = data.rename(columns={"Label": "Nama Wilayah"})
-# --- AKHIR PERUBAHAN ---
 
 # --- 3. Filter & Persiapan Data ---
 if data is not None:
@@ -117,8 +112,6 @@ if data is not None:
     if not selected_years or not fitur_terpilih_base:
         st.warning("Silakan pilih minimal satu tahun dan satu fitur.")
         st.stop()
-    
-    # --- PERUBAHAN LOGIKA UTAMA DIMULAI DI SINI ---
     
     # 1. Filter data HANYA berdasarkan tahun terpilih dan kolom yang relevan
     data_to_pivot = data[data["Tahun"].isin(selected_years)].copy()
@@ -161,15 +154,23 @@ if data is not None:
         st.stop()
         
     data_clustering.index = data_clustering.index + 1
-    st.dataframe(data_clustering, use_container_width=True)
     
     # 7. Normalisasi data
-    features_to_scale = data_clustering[features_for_scaling]
+    features_to_scale_df = data_clustering[features_for_scaling]
     scaler = MinMaxScaler()
-    features_scaled = scaler.fit_transform(features_to_scale)
+    features_scaled = scaler.fit_transform(features_to_scale_df)
+    
+    # --- PERUBAHAN 1 DI SINI: Terapkan nilai ternormalisasi kembali ke DataFrame ---
+    # Ini memastikan bahwa DataFrame yang ditampilkan di bawah
+    # dan yang digunakan untuk plotting adalah data yang sudah ternormalisasi.
+    data_clustering[features_for_scaling] = features_scaled
+    st.success("Data telah dinormalisasi menggunakan MinMaxScaler (skala 0-1).")
+    # --- AKHIR PERUBAHAN 1 ---
 
-    # --- AKHIR PERUBAHAN LOGIKA UTAMA ---
-
+    st.dataframe(data_clustering, use_container_width=True)
+    
+    # (Array 'features_scaled' sudah siap untuk digunakan oleh fungsi clustering)
+    
 
     # --- 4. Parameter & Eksekusi ---
     st.header("3. Parameter & Eksekusi")
@@ -202,16 +203,19 @@ if data is not None:
             st.subheader("Visualisasi Hasil")
             plot_col1, plot_col2 = st.columns(2)
             
-            # --- PERUBAHAN DI SINI ---
-            # Gunakan list fitur yang baru (features_for_scaling) untuk dropdown
             feat_x = plot_col1.selectbox("Pilih Fitur Sumbu X", features_for_scaling, index=0, key="dbscan_x")
             feat_y_index = 1 if len(features_for_scaling) > 1 else 0
             feat_y = plot_col2.selectbox("Pilih Fitur Sumbu Y", features_for_scaling, index=feat_y_index, key="dbscan_y")
             
+            # data_clustering yang dikirim ke plot sekarang sudah berisi nilai ternormalisasi
             plot_dbscan_results(data_clustering, dbscan, clusters, feat_x, feat_y)
             
-            st.subheader("Data dengan Hasil Cluster")
-            st.dataframe(data_clustering, use_container_width=True)
+            st.subheader("Data dengan Hasil Cluster (Nilai Ternormalisasi)")
+            
+            # --- PERUBAHAN 2 DI SINI: Mengatur urutan kolom ---
+            column_order = ["Nama Wilayah", "Cluster"] + features_for_scaling
+            st.dataframe(data_clustering[column_order], use_container_width=True)
+            # --- AKHIR PERUBAHAN 2 ---
 
     elif selected_method == "Intelligent K-Means":
         st.info("Metode ini secara otomatis menentukan jumlah klaster (K) yang optimal. Tidak ada parameter tambahan yang diperlukan.")
@@ -220,8 +224,6 @@ if data is not None:
             st.header("4. Hasil Analisis Intelligent K-Means")
             st.subheader("Log Proses Real-time")
             
-            # --- PERUBAHAN DI SINI ---
-            # Kirim list fitur yang baru (features_for_scaling) ke fungsi
             final_labels, final_centroids_scaled, final_k = run_intelligent_kmeans(features_scaled, features_for_scaling)
             
             st.success("🎉 Analisis Selesai!")
@@ -237,17 +239,19 @@ if data is not None:
             st.subheader("Visualisasi Hasil Clustering")
             plot_col1, plot_col2 = st.columns(2)
             
-            # --- PERUBAHAN DI SINI ---
-            # Gunakan list fitur yang baru (features_for_scaling) untuk dropdown
             feat_x = plot_col1.selectbox("Pilih Fitur Sumbu X", features_for_scaling, index=0, key="ikm_x")
             feat_y_index = 1 if len(features_for_scaling) > 1 else 0
             feat_y = plot_col2.selectbox("Pilih Fitur Sumbu Y", features_for_scaling, index=feat_y_index, key="ikm_y")
             
-            # Kirim list fitur yang baru (features_for_scaling) ke fungsi visualisasi
+            # data_clustering yang dikirim ke plot sekarang sudah berisi nilai ternormalisasi
             plot_kmeans_results(data_clustering, final_labels, final_centroids_scaled, feat_x, feat_y, scaler, features_for_scaling)
 
-            st.subheader("Data dengan Hasil Cluster")
-            st.dataframe(data_clustering, use_container_width=True)
+            st.subheader("Data dengan Hasil Cluster (Nilai Ternormalisasi)")
+            
+            # --- PERUBAHAN 3 DI SINI: Mengatur urutan kolom ---
+            column_order = ["Nama Wilayah", "Cluster"] + features_for_scaling
+            st.dataframe(data_clustering[column_order], use_container_width=True)
+            # --- AKHIR PERUBAHAN 3 ---
 
 else:
     st.info("☝️ Silakan pilih atau unggah dataset Anda untuk memulai analisis.")
