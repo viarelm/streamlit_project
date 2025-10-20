@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    
+        <script>
+            L_NO_TOUCH = false;
+            L_DISABLE_3D = false;
+        </script>
+    
+    <style>html, body {width: 100%;height: 100%;margin: 0;padding: 0;}</style>
+    <style>#map {position:absolute;top:0;bottom:0;right:0;left:0;}</style>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_f402c78a954b9d83b998fd8a9ed27a95 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+        
+    
+                    <style>
+                        .foliumtooltip {
+                            
+                        }
+                       .foliumtooltip table{
+                            margin: auto;
+                        }
+                        .foliumtooltip tr{
+                            text-align: left;
+                        }
+                        .foliumtooltip th{
+                            padding: 2px; padding-right: 8px;
+                        }
+                    </style>
+            
+</head>
+<body>
+    
+    
+            <div class="folium-map" id="map_f402c78a954b9d83b998fd8a9ed27a95" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_f402c78a954b9d83b998fd8a9ed27a95 = L.map(
+                "map_f402c78a954b9d83b998fd8a9ed27a95",
+                {
+                    center: [-2.5, 118.0],
+                    crs: L.CRS.EPSG3857,
+                    zoom: 5,
+                    zoomControl: true,
+                    preferCanvas: false,
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_650b57a8235467defeaf2a9bda41f7cc = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {"attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors", "detectRetina": false, "maxNativeZoom": 19, "maxZoom": 19, "minZoom": 0, "noWrap": false, "opacity": 1, "subdomains": "abc", "tms": false}
+            );
+        
+    
+            tile_layer_650b57a8235467defeaf2a9bda41f7cc.addTo(map_f402c78a954b9d83b998fd8a9ed27a95);
+        
+    
+        function geo_json_a54f987b68553387b62c8f5fc9e9fe79_styler(feature) {
+            switch(feature.properties.name) {
+                case "Jakarta": case "Bandung": case "Surabaya": 
+                    return {"color": "black", "fillColor": "#FF0000", "fillOpacity": 0.5, "weight": 1};
+                case "Makassar": 
+                    return {"color": "black", "fillColor": "#008000", "fillOpacity": 0.5, "weight": 1};
+                default:
+                    return {"color": "black", "fillColor": "#0000FF", "fillOpacity": 0.5, "weight": 1};
+            }
+        }
+
+        function geo_json_a54f987b68553387b62c8f5fc9e9fe79_onEachFeature(feature, layer) {
+            layer.on({
+            });
+        };
+        var geo_json_a54f987b68553387b62c8f5fc9e9fe79 = L.geoJson(null, {
+                onEachFeature: geo_json_a54f987b68553387b62c8f5fc9e9fe79_onEachFeature,
+            
+                style: geo_json_a54f987b68553387b62c8f5fc9e9fe79_styler,
+        });
+
+        function geo_json_a54f987b68553387b62c8f5fc9e9fe79_add (data) {
+            geo_json_a54f987b68553387b62c8f5fc9e9fe79
+                .addData(data);
+        }
+            geo_json_a54f987b68553387b62c8f5fc9e9fe79_add({"features": [{"geometry": {"coordinates": [[[106.7, -6.1], [106.9, -6.1], [106.9, -6.3], [106.7, -6.3], [106.7, -6.1]]], "type": "Polygon"}, "properties": {"name": "Jakarta"}, "type": "Feature"}, {"geometry": {"coordinates": [[[107.5, -6.8], [107.7, -6.8], [107.7, -7.0], [107.5, -7.0], [107.5, -6.8]]], "type": "Polygon"}, "properties": {"name": "Bandung"}, "type": "Feature"}, {"geometry": {"coordinates": [[[112.6, -7.1], [112.9, -7.1], [112.9, -7.4], [112.6, -7.4], [112.6, -7.1]]], "type": "Polygon"}, "properties": {"name": "Surabaya"}, "type": "Feature"}, {"geometry": {"coordinates": [[[98.55, 3.65], [98.8, 3.65], [98.8, 3.5], [98.55, 3.5], [98.55, 3.65]]], "type": "Polygon"}, "properties": {"name": "Medan"}, "type": "Feature"}, {"geometry": {"coordinates": [[[119.35, -5.05], [119.5, -5.05], [119.5, -5.2], [119.35, -5.2], [119.35, -5.05]]], "type": "Polygon"}, "properties": {"name": "Makassar"}, "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+    geo_json_a54f987b68553387b62c8f5fc9e9fe79.bindTooltip(
+    function(layer){
+    let div = L.DomUtil.create('div');
+    
+    let handleObject = feature=>typeof(feature)=='object' ? JSON.stringify(feature) : feature;
+    let fields = ["name"];
+    let aliases = ["name"];
+    let table = '<table>' +
+        String(
+        fields.map(
+        (v,i)=>
+        `<tr>
+            <th>${aliases[i]}</th>
+            
+            <td>${handleObject(layer.feature.properties[v])}</td>
+        </tr>`).join(''))
+    +'</table>';
+    div.innerHTML=table;
+    
+    return div
+    }
+    ,{"className": "foliumtooltip", "sticky": true});
+                     
+    
+            geo_json_a54f987b68553387b62c8f5fc9e9fe79.addTo(map_f402c78a954b9d83b998fd8a9ed27a95);
+        
+    
+            var marker_861aa0f1ec8288ba95208d9734c031b9 = L.marker(
+                [-6.2146, 106.8451],
+                {}
+            ).addTo(map_f402c78a954b9d83b998fd8a9ed27a95);
+        
+    
+            var icon_1c082749be31ab806d98fad1fc1ee16c = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
+            );
+            marker_861aa0f1ec8288ba95208d9734c031b9.setIcon(icon_1c082749be31ab806d98fad1fc1ee16c);
+        
+    
+        var popup_c0194c69c49a81fa45fbba74265d2549 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_2a186791be630b7284ef39853efa2e24 = $(`<div id="html_2a186791be630b7284ef39853efa2e24" style="width: 100.0%; height: 100.0%;">Jakarta (Cluster 0)</div>`)[0];
+                popup_c0194c69c49a81fa45fbba74265d2549.setContent(html_2a186791be630b7284ef39853efa2e24);
+            
+        
+
+        marker_861aa0f1ec8288ba95208d9734c031b9.bindPopup(popup_c0194c69c49a81fa45fbba74265d2549)
+        ;
+
+        
+    
+    
+            var marker_1035f6b2283f0f24582cff66a6361dce = L.marker(
+                [-6.9175, 107.6191],
+                {}
+            ).addTo(map_f402c78a954b9d83b998fd8a9ed27a95);
+        
+    
+            var icon_f95b8f5c2b146540ab193899bfad53b5 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
+            );
+            marker_1035f6b2283f0f24582cff66a6361dce.setIcon(icon_f95b8f5c2b146540ab193899bfad53b5);
+        
+    
+        var popup_d0c4e005edd38cbca05c60883136a8b0 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_bac17437f7d0f7f52aebe3cba2056ae6 = $(`<div id="html_bac17437f7d0f7f52aebe3cba2056ae6" style="width: 100.0%; height: 100.0%;">Bandung (Cluster 0)</div>`)[0];
+                popup_d0c4e005edd38cbca05c60883136a8b0.setContent(html_bac17437f7d0f7f52aebe3cba2056ae6);
+            
+        
+
+        marker_1035f6b2283f0f24582cff66a6361dce.bindPopup(popup_d0c4e005edd38cbca05c60883136a8b0)
+        ;
+
+        
+    
+    
+            var marker_c5a4254d5287319536e4f144eadac03d = L.marker(
+                [-7.2492, 112.7508],
+                {}
+            ).addTo(map_f402c78a954b9d83b998fd8a9ed27a95);
+        
+    
+            var icon_6e6df546ff25c8f885aeb7529fcbe99e = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
+            );
+            marker_c5a4254d5287319536e4f144eadac03d.setIcon(icon_6e6df546ff25c8f885aeb7529fcbe99e);
+        
+    
+        var popup_c2866c0b36d418bd322db9d58988791a = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_3533cd65a05ed3df2a74a1a4719710e3 = $(`<div id="html_3533cd65a05ed3df2a74a1a4719710e3" style="width: 100.0%; height: 100.0%;">Surabaya (Cluster 0)</div>`)[0];
+                popup_c2866c0b36d418bd322db9d58988791a.setContent(html_3533cd65a05ed3df2a74a1a4719710e3);
+            
+        
+
+        marker_c5a4254d5287319536e4f144eadac03d.bindPopup(popup_c2866c0b36d418bd322db9d58988791a)
+        ;
+
+        
+    
+    
+            var marker_64db09f78c09a7b4fc0d3bd446be7464 = L.marker(
+                [3.5833, 98.6667],
+                {}
+            ).addTo(map_f402c78a954b9d83b998fd8a9ed27a95);
+        
+    
+            var icon_f28b1b4d96fc18a542d5579a82128440 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
+            );
+            marker_64db09f78c09a7b4fc0d3bd446be7464.setIcon(icon_f28b1b4d96fc18a542d5579a82128440);
+        
+    
+        var popup_bd4d1b19325dcea9af51145a8f92ca38 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_ff3ec4f2232f3b8f8651d28373bdeea6 = $(`<div id="html_ff3ec4f2232f3b8f8651d28373bdeea6" style="width: 100.0%; height: 100.0%;">Medan (Cluster 1)</div>`)[0];
+                popup_bd4d1b19325dcea9af51145a8f92ca38.setContent(html_ff3ec4f2232f3b8f8651d28373bdeea6);
+            
+        
+
+        marker_64db09f78c09a7b4fc0d3bd446be7464.bindPopup(popup_bd4d1b19325dcea9af51145a8f92ca38)
+        ;
+
+        
+    
+    
+            var marker_b66134173624402ba43a7a49febfceea = L.marker(
+                [-5.1333, 119.4167],
+                {}
+            ).addTo(map_f402c78a954b9d83b998fd8a9ed27a95);
+        
+    
+            var icon_d3e118fbbe0561cd2c16660346398b75 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
+            );
+            marker_b66134173624402ba43a7a49febfceea.setIcon(icon_d3e118fbbe0561cd2c16660346398b75);
+        
+    
+        var popup_efef7c3b1f96cdf3469fc7bf3282fe19 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_a53eb62b72539f7c3ae2dfb02b0c5d2e = $(`<div id="html_a53eb62b72539f7c3ae2dfb02b0c5d2e" style="width: 100.0%; height: 100.0%;">Makassar (Cluster 2)</div>`)[0];
+                popup_efef7c3b1f96cdf3469fc7bf3282fe19.setContent(html_a53eb62b72539f7c3ae2dfb02b0c5d2e);
+            
+        
+
+        marker_b66134173624402ba43a7a49febfceea.bindPopup(popup_efef7c3b1f96cdf3469fc7bf3282fe19)
+        ;
+
+        
+    
+</script>
+</html>
