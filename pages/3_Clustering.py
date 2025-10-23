@@ -501,11 +501,7 @@ mapping_fitur = {
     "Angka Harapan Hidup Laki-Laki": "AHH_L",
     "Angka Harapan Hidup Perempuan": "AHH_P",
     "Pengeluaran Per Kapita Laki-Laki": "PKP_L",
-    "Pengeluaran Per Kapita Perempuan": "PKP_P",
-    "Rata-Rata Lama Sekolah (tahun)": "RLS",
-    "Persentase Penduduk Miskin": "P0",
-    "Indeks Kedalaman Kemiskinan": "P1",
-    "Indeks Keparahan Kemiskinan": "P2"
+    "Pengeluaran Per Kapita Perempuan": "PKP_P"
 }
 
 # ... (Logika load_data dan download template sama) ...
