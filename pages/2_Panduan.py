@@ -1,75 +1,90 @@
+# pages/1_📖_Panduan.py
+
 import streamlit as st
-import folium
-from streamlit_folium import st_folium
 
-st.title("🗺️ GeoJSON Map of Indonesian Cities")
+# --- Konfigurasi Halaman ---
+st.set_page_config(
+    page_title="Panduan Aplikasi",
+    page_icon="📖",
+    layout='wide',
+)
 
-# ==============================
-# Step 1. Create Hardcoded GeoJSON
-# ==============================
-geojson_data = {
-    "type": "FeatureCollection",
-    "features": [
-        {
-            "type": "Feature",
-            "properties": {"city": "Jakarta"},
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [[
-                    [106.70, -6.10],
-                    [106.90, -6.10],
-                    [106.90, -6.30],
-                    [106.70, -6.30],
-                    [106.70, -6.10]
-                ]]
-            },
-        },
-        {
-            "type": "Feature",
-            "properties": {"city": "Bandung"},
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [[
-                    [107.55, -6.80],
-                    [107.70, -6.80],
-                    [107.70, -6.95],
-                    [107.55, -6.95],
-                    [107.55, -6.80]
-                ]]
-            },
-        },
-        {
-            "type": "Feature",
-            "properties": {"city": "Surabaya"},
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [[
-                    [112.60, -7.20],
-                    [112.90, -7.20],
-                    [112.90, -7.40],
-                    [112.60, -7.40],
-                    [112.60, -7.20]
-                ]]
-            },
-        }
-    ]
-}
+# --- Judul Halaman ---
+st.title("📖 Panduan Aplikasi")
+st.write("Selamat datang! Halaman ini akan memandu Anda dalam menggunakan aplikasi pengelompokan komponen IPM.")
 
-# ==============================
-# Step 2. Create Map
-# ==============================
-m = folium.Map(location=[-2.5, 118], zoom_start=5, tiles="CartoDB positron")
+st.divider()
 
-# Add polygons with city name tooltips
-folium.GeoJson(
-    geojson_data,
-    name="Indonesian Cities",
-    tooltip=folium.features.GeoJsonTooltip(fields=["city"])
-).add_to(m)
+# --- Section 1: Penjelasan Umum ---
+st.header("1. Penjelasan Umum Aplikasi")
 
-folium.LayerControl().add_to(m)
+st.markdown("""
+Aplikasi ini dirancang untuk menganalisis dan mengelompokkan data Indeks Pembangunan Manusia (IPM) di seluruh kabupaten dan kota di Indonesia. Tujuannya adalah untuk memberikan visualisasi pengelompokan mengenai pola pembangunan manusia di tingkat daerah.
 
-# ==============================
-# Step 3. Show in Streamlit
-# ==============================
-st_folium(m, width=800, height=600)
+**Sumber Dataset**
+Dataset yang digunakan dalam aplikasi ini bersumber dari [Badan Pusat Statistik Indonesia (BPS)](https://www.bps.go.id/id) dengan data Indeks Pembangunan Manusia (IPM), Angka Harapan Hidup (AHH), Pengeluaran Per Kapita (PKP).
+
+**Metodologi:**
+Aplikasi ini menerapkan dua algoritma *clustering* untuk mengelompokkan daerah berdasarkan komponen IPM:
+1.  **Intelligent K-Means:** Sebuah variasi dari algoritma K-Means yang bertujuan untuk menemukan pusat cluster awal yang lebih baik, sehingga dapat menghasilkan pengelompokan yang lebih optimal dan menentukan jumlah klaster dari data itu sendiri.
+2.  **DBSCAN (Density-Based Spatial Clustering of Applications with Noise):** Algoritma yang mengelompokkan data berdasarkan kepadatan titik data, yang efektif dalam menemukan cluster dengan bentuk arbitrer dan mengidentifikasi data *outliers*.
+
+Dataset yang diunggah akan melalui proses **standardisasi** menggunakan *MinMaxScaler* sebelum diolah oleh algoritma untuk memastikan setiap komponen memiliki skala yang sebanding.
+""")
+
+st.divider()
+
+# --- Section 2: Format Dataset & Unduh Template ---
+st.header("2. Format Dataset dan Template")
+
+st.markdown("""
+Untuk menggunakan fitur pengelompokan, Anda perlu mengunggah file dataset dengan format `.xlsx`. Pastikan dataset Anda memiliki kolom-kolom berikut dengan nama yang **sesuai persis**:
+
+-   `Label`: Nama Kabupaten atau Kota.
+-   `IPM_L`: Indeks Pembangunan Manusia Laki-Laki.
+-   `IPM_P`: HIndeks Pembangunan Manusia Perempuan.
+-   `AHH_L`: Angka Harapan Hidup Laki-Laki.
+-   `AHH_P`: Angka Harapan Hidup Perempuan.
+-   `PKP_L`: Pengeluaran Per Kapita Laki-Laki.
+-   `PKP_P`: Pengeluaran Per Kapita Perempuan.
+-   `Tahun`: Tahun Data.
+
+Anda dapat mengunduh template dataset di bawah ini untuk memastikan format yang benar.
+""")
+
+# --- Fungsi tunggal untuk membaca file sebagai bytes ---
+@st.cache_data
+def get_file_as_bytes(file_path):
+    try:
+        with open(file_path, "rb") as file:
+            return file.read()
+    except FileNotFoundError:
+        st.error(f"File tidak ditemukan di path: {file_path}")
+        return None
+
+# Tombol unduh untuk template dataset
+if template_bytes := get_file_as_bytes("assets/template_dataset.xlsx"):
+    st.download_button(
+        label="Unduh Template Dataset (.xlsx)",
+        data=template_bytes,
+        file_name='template_dataset.xlsx',
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+st.divider()
+
+# --- Section 3: Unduh Buku Panduan ---
+st.header("3. Unduh Buku Panduan")
+
+st.markdown("""
+Untuk panduan yang lebih detail mengenai setiap fitur, penjelasan metodologi, dan cara interpretasi hasil, silakan unduh buku panduan lengkap dalam format PDF melalui tautan di bawah ini.
+""")
+
+# Tombol unduh untuk buku panduan
+if pdf_bytes := get_file_as_bytes("assets/Buku_Panduan_Aplikasi_Pengelompokan_IPM.pdf"):
+    st.download_button(
+        label="Unduh Buku Panduan (.pdf)",
+        data=pdf_bytes,
+        file_name="Buku_Panduan_Aplikasi_Pengelompokan_IPM.pdf",
+        mime="application/octet-stream"
+    )

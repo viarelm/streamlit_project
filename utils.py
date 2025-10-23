@@ -28,8 +28,17 @@ def get_template_file():
     """Memuat data template untuk di-download."""
     try:
         # Asumsikan template_dataset.xlsx ada di root folder
-        with open("template_dataset.xlsx", "rb") as file:
+        with open("assets/template_dataset.xlsx", "rb") as file:
             return file.read()
     except FileNotFoundError:
         st.error("File 'template_dataset.xlsx' tidak ditemukan di root folder.")
         return None
+    
+def show_footer():
+    st.markdown("""
+    <hr style='margin: 0.5rem 0;'>
+    <div style='text-align: center; font-size: 0.9rem; padding: 0.5rem 0;'>
+        © 2025 Valentino Richardo Lim
+    </div>
+    """, unsafe_allow_html=True)
+

@@ -51,43 +51,59 @@ def load_geojson(path):
         st.error(f"File GeoJSON '{path}' tidak ditemukan. Pastikan file ini ada di folder yang sama dengan aplikasi Anda.")
         return None
 
-def create_cluster_map(df_clustered: pd.DataFrame, geojson_data: dict):
+def create_cluster_map(df_clustered: pd.DataFrame, geojson_data: dict, base_features: list):
     """
-    Membuat peta Folium berdasarkan hasil clustering.
-    Fungsi ini independen dan hanya memerlukan DataFrame hasil dan data GeoJSON.
-
-    Args:
-        df_clustered (pd.DataFrame): DataFrame yang harus memiliki kolom 'Nama Wilayah' dan 'Cluster_Label'.
-        geojson_data (dict): Data GeoJSON peta Indonesia yang sudah dimuat.
-
-    Returns:
-        folium.Map: Objek peta Folium yang siap untuk ditampilkan.
+    Membuat peta Folium berdasarkan hasil clustering dengan tooltip rata-rata.
     """
-    # Tentukan pusat peta dan inisialisasi
     map_center = [-2.5, 118.0]
     m = folium.Map(location=map_center, zoom_start=5, tiles="cartodbpositron")
 
-    # Buat palet warna dinamis berdasarkan jumlah cluster unik
-    cluster_labels = sorted(df_clustered['Cluster_Label'].unique())
-    colors = sns.color_palette("Paired", len(cluster_labels)).as_hex()
-    color_map = dict(zip(cluster_labels, colors))
+    # Palet warna dinamis (Anda bisa ganti "viridis" dengan palet lain)
+    unique_labels = sorted([label for label in df_clustered['Cluster_Label'].unique() if 'Noise' not in str(label)])
+    colors = sns.color_palette("viridis", len(unique_labels)).as_hex()
+    color_map = dict(zip(unique_labels, colors))
+
+    # --- LOGIKA BARU: Hitung rata-rata dan gabungkan data untuk tooltip ---
+    geojson_data_copy = geojson_data.copy()
+    data_dict = df_clustered.set_index('Nama Wilayah').to_dict('index')
+
+    for feature in geojson_data_copy['features']:
+        nama_wilayah = feature['properties']['NAME_2']
+        if nama_wilayah in data_dict:
+            wilayah_data = data_dict[nama_wilayah]
+            feature['properties']['Cluster_Label'] = wilayah_data.get('Cluster_Label', 'N/A')
+
+            # Iterasi melalui fitur dasar yang dipilih (misal: 'AHH', 'RLS')
+            for base_feat in base_features:
+                # Temukan semua kolom yang berhubungan (misal: 'AHH_L_2024', 'AHH_P_2024')
+                related_cols = [col for col in df_clustered.columns if col.startswith(base_feat)]
+                
+                # Ambil semua nilai numerik dari kolom-kolom tersebut untuk wilayah ini
+                values = [
+                    wilayah_data.get(col) for col in related_cols 
+                    if pd.notna(wilayah_data.get(col)) and isinstance(wilayah_data.get(col), (int, float))
+                ]
+                
+                # Hitung rata-ratanya jika ada data
+                if values:
+                    average_value = sum(values) / len(values)
+                    # Tambahkan properti baru untuk rata-rata
+                    feature['properties'][f'Rata-rata {base_feat}'] = f"{average_value:.2f}"
+    # --- AKHIR LOGIKA BARU ---
+
+    # ---------------------------------------------------
 
     # Fungsi untuk mewarnai setiap wilayah pada peta
     def style_function(feature):
-        nama_wilayah = feature['properties']['NAME_2']
-        row = df_clustered[df_clustered['Nama Wilayah'] == nama_wilayah]
+        cluster_label = feature['properties'].get('Cluster_Label', None)
         
-        # Atur warna default untuk wilayah yang tidak ada di data atau merupakan noise
-        fill_color = '#D3D3D3' # Abu-abu terang
+        fill_color = '#D3D3D3' # Default untuk data yang tidak ada/noise
         fill_opacity = 0.3
         
-        if not row.empty:
-            cluster_label = row.iloc[0]['Cluster_Label']
-            # Hanya warnai jika bukan 'Noise'
-            if 'Noise' not in str(cluster_label):
-                fill_color = color_map.get(cluster_label, '#808080') # Abu-abu gelap jika label tidak dikenal
-                fill_opacity = 0.7
-        
+        if cluster_label and 'Noise' not in str(cluster_label):
+            fill_color = color_map.get(cluster_label, '#808080')
+            fill_opacity = 0.7
+            
         return {
             'fillColor': fill_color,
             'color': 'black',
@@ -95,31 +111,39 @@ def create_cluster_map(df_clustered: pd.DataFrame, geojson_data: dict):
             'fillOpacity': fill_opacity
         }
 
-    # Tambahkan layer GeoJson dengan style dan tooltip
+    # --- PERUBAHAN 3: PERBARUI FIELDS DAN ALIASES DI TOOLTIP ---
+    # Dapatkan nama kolom fitur terbaru untuk ditampilkan
+    fields_to_show = ['NAME_2', 'Cluster_Label'] + [f'Rata-rata {feat}' for feat in base_features]
+    aliases_to_show = ['Wilayah:', 'Cluster:'] + [f'Rata-rata {feat}:' for feat in base_features]
+    
+    # Pastikan hanya menampilkan field yang ada
+    available_fields = [f for f in fields_to_show if f in geojson_data_copy['features'][0]['properties']]
+    available_aliases = [aliases_to_show[fields_to_show.index(f)] for f in available_fields]
+
     folium.GeoJson(
-        geojson_data,
+        geojson_data_copy,
         style_function=style_function,
         tooltip=folium.GeoJsonTooltip(
-            fields=['NAME_2'],
-            aliases=['Wilayah:'],
+            fields=available_fields,
+            aliases=available_aliases,
             style=("background-color: white; color: #333333; font-family: arial; font-size: 12px; padding: 10px;")
         )
     ).add_to(m)
+    # --------------------------------------------------------------
 
-    # Buat legenda HTML kustom
+    # Buat legenda HTML kustom (tidak perlu diubah)
     legend_html = '''
-         <div style="position: fixed; 
-         bottom: 50px; left: 50px; width: auto; height: auto; 
-         border:2px solid grey; z-index:9999; font-size:14px;
-         background-color:white; padding: 10px; border-radius: 5px;">
-         <b>Legenda Cluster</b><br>
-         '''
+        <div style="position: fixed; 
+        bottom: 50px; left: 50px; width: auto; height: auto; 
+        border:2px solid grey; z-index:9999; font-size:14px;
+        background-color:white; color: black; padding: 10px; border-radius: 5px;">
+        <b>Legenda Cluster</b><br>
+        '''
     for label, color in color_map.items():
         if 'Noise' not in str(label):
             legend_html += f'<i style="background:{color}; width:20px; height:20px; float:left; margin-right:8px; border:1px solid grey;"></i> {label}<br>'
     
-    # Tambahkan item legenda untuk data yang tidak termasuk
-    legend_html += '<i style="background:#D3D3D3; width:20px; height:20px; float:left; margin-right:8px; border:1px solid grey;"></i> Tidak Termasuk / Noise<br>'
+    legend_html += '<i style="background:#D3D3D3; width:20px; height:20px; float:left; margin-right:8px; border:1px solid grey;"></i> Noise / Outlier<br>'
     legend_html += '</div>'
     m.get_root().html.add_child(folium.Element(legend_html))
     
@@ -193,11 +217,12 @@ def ringkasan_cluster(df: pd.DataFrame, judul: str = "Ringkasan Cluster"):
 
 # ... (Fungsi visualisasi_silhouette_full dan display_clustering_results Anda tetap di sini) ...
 # --- TAMBAHAN BARU: FUNGSI PLOT SILHOUETTE ---
-def visualisasi_silhouette_full(data_matriks: np.ndarray, label_cluster: np.ndarray, algo: str = ""):
+def visualisasi_silhouette_full(data_matriks: np.ndarray, label_cluster: np.ndarray, label_map: dict, algo: str = ""):
     """
     Membuat plot silhouette untuk semua sampel.
-    data_matriks: Data yang sudah ternormalisasi (array numpy)
-    label_cluster: Array label hasil cluster
+    data_matriks: Data yang sudah ternormalisasi (array numpy).
+    label_cluster: Array label numerik hasil cluster.
+    label_map: Kamus untuk memetakan label numerik ke label deskriptif.
     """
     nilai_sample = silhouette_samples(data_matriks, label_cluster)
     nilai_rata   = silhouette_score(data_matriks, label_cluster)
@@ -214,6 +239,9 @@ def visualisasi_silhouette_full(data_matriks: np.ndarray, label_cluster: np.ndar
         ukuran_i = nilai_i.shape[0]
         y_atas = y_bawah + ukuran_i
 
+        # Dapatkan label deskriptif dari map, gunakan label numerik jika tidak ada
+        nama_label = label_map.get(i, str(i))
+
         warna = cm.nipy_spectral(float(i) / n_clusters)
         ax1.fill_betweenx(
             np.arange(y_bawah, y_atas),
@@ -224,18 +252,19 @@ def visualisasi_silhouette_full(data_matriks: np.ndarray, label_cluster: np.ndar
             alpha=0.7
         )
 
-        ax1.text(-0.05, y_bawah + 0.5 * ukuran_i, str(i), fontsize=9)
+        # --- PERUBAHAN UTAMA: Gunakan nama_label untuk teks ---
+        ax1.text(-0.05, y_bawah + 0.5 * ukuran_i, nama_label, fontsize=9, ha='right')
+        # ----------------------------------------------------
         y_bawah = y_atas + 5
 
     ax1.set_title(f"Plot Silhouette ({algo})", fontsize=11, pad=10) 
     ax1.set_xlabel("Nilai Silhouette Coefficient", fontsize=10)
     ax1.set_ylabel("Cluster", fontsize=10)
 
-    # Garis rata-rata silhouette
     ax1.axvline(x=nilai_rata, color="red", linestyle="--", linewidth=1.5)
     ax1.text(
         nilai_rata + 0.01, 
-        y_bawah * 0.01, # Posisi di dekat bawah
+        y_bawah * 0.01,
         f"Rata-rata: {nilai_rata:.2f}", 
         color="red", 
         fontsize=9, 
@@ -249,7 +278,6 @@ def visualisasi_silhouette_full(data_matriks: np.ndarray, label_cluster: np.ndar
 
     plt.tight_layout(pad=1)
     return fig
-
 # Analisis Cluster
 # Analisis Cluster (DIPERBARUI UNTUK DBSCAN)
 def analisis_cluster(df: pd.DataFrame, fitur_digunakan, algoritma: str = ""):
@@ -343,6 +371,7 @@ def display_clustering_results(
     st.subheader("Analisis Plot Silhouette")
     data_matriks = data_clustering[features_for_scaling].values
     labels = plot_args['labels']
+    label_map = plot_args.get('label_map', {})
     n_clusters_unique = len(np.unique(labels))
 
     if method_name == "DBSCAN":
@@ -352,14 +381,16 @@ def display_clustering_results(
             n_clusters_filtered = len(np.unique(labels_filtered))
             if n_clusters_filtered > 1:
                 st.write("Plot Silhouette (Tanpa Noise):")
-                fig_sil = visualisasi_silhouette_full(data_matriks[mask_non_noise], labels_filtered, f"{method_name} (K={n_clusters_filtered})")
+                fig_sil = visualisasi_silhouette_full(data_matriks[mask_non_noise], labels_filtered, label_map, f"{method_name} (K={n_clusters_filtered})")
                 st.pyplot(fig_sil) # visualisasi_silhouette_full sudah memanggil st.pyplot
             else:
                 st.info("Silhouette tidak ditampilkan (kurang dari 2 cluster tanpa noise).")
         else:
             st.info("Semua data adalah noise, Silhouette tidak dapat dibuat.")
     elif method_name == "Intelligent K-Means" and n_clusters_unique > 1:
-        fig_sil = visualisasi_silhouette_full(data_matriks, labels, f"{method_name} (K={n_clusters_unique})")
+        fig_sil = visualisasi_silhouette_full(
+                data_matriks, labels, label_map, f"{method_name} (K={n_clusters_unique})"
+            )  
         st.pyplot(fig_sil) # visualisasi_silhouette_full sudah memanggil st.pyplot
     else:
         st.info("Plot Silhouette tidak dapat ditampilkan (K=1).")
@@ -430,8 +461,7 @@ def display_clustering_results(
 
     if geojson_data:
         # Panggil fungsi independen untuk membuat objek peta
-        map_object = create_cluster_map(data_original, geojson_data)
-        
+        map_object = create_cluster_map(data_original, geojson_data, fitur_terpilih_base)        
         # Tampilkan peta di Streamlit
         st_folium(map_object, use_container_width=True, height=600)
         st.caption("Arahkan kursor ke wilayah untuk melihat namanya. Wilayah berwarna abu-abu tidak termasuk dalam analisis atau merupakan noise.")
@@ -486,18 +516,19 @@ if data_source_option == "Gunakan Contoh Dataset":
     else:
         st.error(f"Error: File dataset contoh '{dataset_path}' tidak ditemukan.")
 else:
+    template_data = get_template_file()
+    if template_data:
+        st.download_button(
+        label="📥 Download Template Dataset (.xlsx)",
+        data=template_data,
+        file_name="assets/template_dataset.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     uploaded_file = st.file_uploader("Unggah file Anda (.xlsx atau .csv)", type=['xlsx', 'csv'])
     if uploaded_file:
         data = load_data(uploaded_file)
+       
 
-template_data = get_template_file()
-if template_data:
-    st.download_button(
-        label="📥 Download Template Dataset (.xlsx)",
-        data=template_data,
-        file_name="template_dataset.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
 
 if data is not None:
     if "Label" in data.columns:
@@ -625,8 +656,15 @@ if data is not None:
                 # --- PERUBAHAN LABEL DBSCAN DI SINI ---
                 # Buat 'Cluster_Label' secara manual, bukan dari analisis_cluster
                 data_original['Cluster_Label'] = data_original['Cluster_Num'].apply(
-                    lambda x: "Noise (-1)" if x == -1 else f"Cluster {x}"
+                    lambda x: "Noise (-1)" if x == -1 else f"Cluster {x+1}"
                 )
+                
+                unique_labels_dbscan = np.unique(clusters)
+                    # Balikkan proses lambda untuk membuat kamus: {nomor: "Label Deskriptif"}
+                label_map_dbscan = {
+                    label: "Noise / Outlier" if label == -1 else f"Cluster {label + 1}"
+                    for label in unique_labels_dbscan
+                }
                 # --- AKHIR PERUBAHAN ---
 
                 # --- SIMPAN HASIL KE SESSION STATE ---
@@ -638,8 +676,7 @@ if data is not None:
                 st.session_state.fitur_terpilih_base = fitur_terpilih_base
                 st.session_state.selected_years = selected_years
                 st.session_state.metrics = {'n_clusters': n_clusters, 'n_noise': n_noise, 'score': score}
-                st.session_state.plot_args = {'labels': clusters, 'dbscan_model': dbscan}
-                
+                st.session_state.plot_args = {'labels': clusters, 'dbscan_model': dbscan, 'label_map': label_map_dbscan}                
                 st.rerun()
 
     elif selected_method == "Intelligent K-Means":
@@ -666,7 +703,7 @@ if data is not None:
                 "Intelligent K-Means"
             )
             data_original['Cluster_Label'] = data_original['Cluster'].map(label_cluster)
-
+            label_map_for_silhouette = {k - 1: v for k, v in label_cluster.items()}
             # --- SIMPAN HASIL KE SESSION STATE ---
             st.session_state.clustering_complete = True
             st.session_state.method_name = "Intelligent K-Means"
@@ -679,7 +716,8 @@ if data is not None:
             st.session_state.plot_args = {
                 'labels': final_labels, 
                 'centroids': final_centroids_scaled, 
-                'scaler': scaler
+                'scaler': scaler,
+                'label_map': label_map_for_silhouette
             }
             
             st.rerun() # Paksa script run ulang untuk masuk ke blok display
