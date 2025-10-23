@@ -181,7 +181,7 @@ def ringkasan_cluster(df: pd.DataFrame, judul: str = "Ringkasan Cluster"):
         "Persen": (hitung.values / total * 100).round(1)
     })
 
-    fig, ax = plt.subplots(figsize=(6, 5)) # Sedikit menambah tinggi figure secara keseluruhan
+    fig, ax = plt.subplots(figsize=(4, 3)) # Sedikit menambah tinggi figure secara keseluruhan
     warna = plt.cm.Blues(np.linspace(0.4, 0.8, k))
     
     ringkasan = ringkasan.sort_values(by="Cluster")
@@ -230,7 +230,7 @@ def visualisasi_silhouette_full(data_matriks: np.ndarray, label_cluster: np.ndar
     n_clusters = len(np.unique(label_cluster))
     y_bawah = 5
     
-    fig, ax1 = plt.subplots(figsize=(6, 5))
+    fig, ax1 = plt.subplots(figsize=(4, 3))
 
     for i in sorted(np.unique(label_cluster)):
         nilai_i = nilai_sample[label_cluster == i]
@@ -253,9 +253,8 @@ def visualisasi_silhouette_full(data_matriks: np.ndarray, label_cluster: np.ndar
         )
 
         # --- PERUBAHAN UTAMA: Gunakan nama_label untuk teks ---
-        ax1.text(-0.05, y_bawah + 0.5 * ukuran_i, nama_label, fontsize=9, ha='right')
-        # ----------------------------------------------------
-        y_bawah = y_atas + 5
+        ax1.text(1.02, y_bawah + 0.5 * ukuran_i, nama_label, fontsize=8, ha='left', va='center')        # ----------------------------------------------------
+        y_bawah = y_atas + 10
 
     ax1.set_title(f"Plot Silhouette ({algo})", fontsize=11, pad=10) 
     ax1.set_xlabel("Nilai Silhouette Coefficient", fontsize=10)
@@ -343,7 +342,7 @@ def display_clustering_results(
     feat_y_index = 1 if len(features_for_scaling) > 1 else 0
     feat_y = plot_col2.selectbox("Pilih Fitur Sumbu Y", features_for_scaling, index=feat_y_index, key=f"{method_name}_y")
 
-    fig_scatter, ax_scatter = plt.subplots(figsize=(8, 6))
+    fig_scatter, ax_scatter = plt.subplots(figsize=(6, 5))
     plot_data = data_clustering.copy()
     plot_data['Cluster_Label'] = data_original['Cluster_Label'] # Pastikan kolom ini ada
 
@@ -443,7 +442,7 @@ def display_clustering_results(
         year_x = col_scat1.selectbox("Pilih Tahun Sumbu X", selected_years, index=0, key=f"{method_name}_scat_x")
         year_y = col_scat2.selectbox("Pilih Tahun Sumbu Y", selected_years, index=len(selected_years)-1, key=f"{method_name}_scat_y")
         feat_x_scat, feat_y_scat = f"{base_feature_scatter}_{year_x}", f"{base_feature_scatter}_{year_y}"
-        fig_scatter_comp, ax_scatter_comp = plt.subplots(figsize=(8, 6))
+        fig_scatter_comp, ax_scatter_comp = plt.subplots(figsize=(4, 3))
         sns.scatterplot(data=data_original, x=feat_x_scat, y=feat_y_scat, hue='Cluster_Label', ax=ax_scatter_comp, palette="Set1", s=50, alpha=0.7)
         ax_scatter_comp.set_title(f"Perbandingan {base_feature_scatter}: {year_x} vs {year_y}")
         ax_scatter_comp.legend(title="Cluster", bbox_to_anchor=(1.05, 1), loc='upper left')

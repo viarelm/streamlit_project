@@ -77,14 +77,14 @@ st.divider()
 st.header("3. Unduh Buku Panduan")
 
 st.markdown("""
-Untuk panduan yang lebih detail mengenai setiap fitur, penjelasan metodologi, dan cara interpretasi hasil, silakan unduh buku panduan lengkap dalam format PDF melalui tautan di bawah ini.
+Untuk panduan yang lebih detail mengenai setiap fitur dan cara penggunaan, silakan unduh buku panduan lengkap dalam format PDF melalui tautan di bawah ini.
 """)
 
 # Tombol unduh untuk buku panduan
-if pdf_bytes := get_file_as_bytes("assets/Buku_Panduan_Aplikasi_Pengelompokan_IPM.pdf"):
+if pdf_bytes := get_file_as_bytes("assets/buku_panduan.pdf"):
     st.download_button(
         label="Unduh Buku Panduan (.pdf)",
         data=pdf_bytes,
-        file_name="Buku_Panduan_Aplikasi_Pengelompokan_IPM.pdf",
+        file_name="buku_panduan.pdf",
         mime="application/octet-stream"
     )
