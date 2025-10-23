@@ -5,11 +5,13 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import silhouette_score, silhouette_samples
 import os
+import json
+import folium
+from streamlit_folium import st_folium
 
 # Impor fungsi-fungsi yang telah dipisah
 from utils import load_data, get_template_file 
 from clustering_algorithms import run_dbscan, run_intelligent_kmeans
-from clustering_visuals import plot_dbscan_results, plot_kmeans_results
 
 # --- TAMBAHAN: IMPOR UNTUK VISUALISASI TOOLKIT ---
 import matplotlib.pyplot as plt
@@ -37,6 +39,92 @@ skema_label = {
     11: ["Sejahtera Tinggi", "Sejahtera", "Cukup Sejahtera", "Menengah Atas", "Menengah", "Menengah Bawah", "Cukup Rentan", "Rentan", "Sangat Rentan", "Tertinggal", "Tertinggal Berat"],
 }
 
+# ... (setelah blok `skema_label` Anda) ...
+
+@st.cache_data
+def load_geojson(path):
+    """Memuat file GeoJSON dari path yang diberikan."""
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        st.error(f"File GeoJSON '{path}' tidak ditemukan. Pastikan file ini ada di folder yang sama dengan aplikasi Anda.")
+        return None
+
+def create_cluster_map(df_clustered: pd.DataFrame, geojson_data: dict):
+    """
+    Membuat peta Folium berdasarkan hasil clustering.
+    Fungsi ini independen dan hanya memerlukan DataFrame hasil dan data GeoJSON.
+
+    Args:
+        df_clustered (pd.DataFrame): DataFrame yang harus memiliki kolom 'Nama Wilayah' dan 'Cluster_Label'.
+        geojson_data (dict): Data GeoJSON peta Indonesia yang sudah dimuat.
+
+    Returns:
+        folium.Map: Objek peta Folium yang siap untuk ditampilkan.
+    """
+    # Tentukan pusat peta dan inisialisasi
+    map_center = [-2.5, 118.0]
+    m = folium.Map(location=map_center, zoom_start=5, tiles="cartodbpositron")
+
+    # Buat palet warna dinamis berdasarkan jumlah cluster unik
+    cluster_labels = sorted(df_clustered['Cluster_Label'].unique())
+    colors = sns.color_palette("Paired", len(cluster_labels)).as_hex()
+    color_map = dict(zip(cluster_labels, colors))
+
+    # Fungsi untuk mewarnai setiap wilayah pada peta
+    def style_function(feature):
+        nama_wilayah = feature['properties']['NAME_2']
+        row = df_clustered[df_clustered['Nama Wilayah'] == nama_wilayah]
+        
+        # Atur warna default untuk wilayah yang tidak ada di data atau merupakan noise
+        fill_color = '#D3D3D3' # Abu-abu terang
+        fill_opacity = 0.3
+        
+        if not row.empty:
+            cluster_label = row.iloc[0]['Cluster_Label']
+            # Hanya warnai jika bukan 'Noise'
+            if 'Noise' not in str(cluster_label):
+                fill_color = color_map.get(cluster_label, '#808080') # Abu-abu gelap jika label tidak dikenal
+                fill_opacity = 0.7
+        
+        return {
+            'fillColor': fill_color,
+            'color': 'black',
+            'weight': 0.5,
+            'fillOpacity': fill_opacity
+        }
+
+    # Tambahkan layer GeoJson dengan style dan tooltip
+    folium.GeoJson(
+        geojson_data,
+        style_function=style_function,
+        tooltip=folium.GeoJsonTooltip(
+            fields=['NAME_2'],
+            aliases=['Wilayah:'],
+            style=("background-color: white; color: #333333; font-family: arial; font-size: 12px; padding: 10px;")
+        )
+    ).add_to(m)
+
+    # Buat legenda HTML kustom
+    legend_html = '''
+         <div style="position: fixed; 
+         bottom: 50px; left: 50px; width: auto; height: auto; 
+         border:2px solid grey; z-index:9999; font-size:14px;
+         background-color:white; padding: 10px; border-radius: 5px;">
+         <b>Legenda Cluster</b><br>
+         '''
+    for label, color in color_map.items():
+        if 'Noise' not in str(label):
+            legend_html += f'<i style="background:{color}; width:20px; height:20px; float:left; margin-right:8px; border:1px solid grey;"></i> {label}<br>'
+    
+    # Tambahkan item legenda untuk data yang tidak termasuk
+    legend_html += '<i style="background:#D3D3D3; width:20px; height:20px; float:left; margin-right:8px; border:1px solid grey;"></i> Tidak Termasuk / Noise<br>'
+    legend_html += '</div>'
+    m.get_root().html.add_child(folium.Element(legend_html))
+    
+    return m
+
 def ambil_skema_label(jumlah_k: int):
     """Ambil daftar label cluster berdasarkan jumlah K."""
     return skema_label.get(jumlah_k, [f"Cluster {i+1}" for i in range(jumlah_k)])
@@ -55,6 +143,8 @@ def ambil_skema_label(jumlah_k: int):
 
 
 # Ringkasan Cluster (FUNGSI YANG DIPERBAIKI)
+# Ganti fungsi ringkasan_cluster Anda dengan yang ini
+
 def ringkasan_cluster(df: pd.DataFrame, judul: str = "Ringkasan Cluster"):
     s = df["Cluster"]
     hitung = s.value_counts().sort_index()
@@ -67,35 +157,36 @@ def ringkasan_cluster(df: pd.DataFrame, judul: str = "Ringkasan Cluster"):
         "Persen": (hitung.values / total * 100).round(1)
     })
 
-    fig, ax = plt.subplots(figsize=(6, 4)) 
+    fig, ax = plt.subplots(figsize=(6, 5)) # Sedikit menambah tinggi figure secara keseluruhan
     warna = plt.cm.Blues(np.linspace(0.4, 0.8, k))
     
-    # Pastikan data di-sort berdasarkan index/label untuk plotting
     ringkasan = ringkasan.sort_values(by="Cluster")
     
     bars = ax.bar(ringkasan["Cluster"].astype(str), ringkasan["Jumlah"], color=warna)
 
-    ax.margins(y=0.1)
+    # --- PERBAIKAN UTAMA ADA DI SINI ---
+    # Tambahkan margin atas sebesar 20% (sebelumnya 10%)
+    # Ini memberikan ruang lebih bagi teks di atas bar tertinggi.
+    ax.margins(y=0.2) 
+    # ------------------------------------
+
     for bar, v, p in zip(bars, ringkasan["Jumlah"], ringkasan["Persen"]):
         ax.text(
             bar.get_x() + bar.get_width()/2, 
-            bar.get_height() + (v * 0.02),
+            bar.get_height(), # Letakkan teks tepat di atas bar
             f"{v}\n({p}%)", 
-            ha="center", va="bottom", fontsize=8
+            ha="center", 
+            va="bottom", # Mulai teks dari atas bar ke atas
+            fontsize=8
         )
 
     ax.set_title(f"{judul} (K={k})", fontsize=12, pad=15)
     ax.set_xlabel("Cluster", fontsize=10)
     ax.set_ylabel("Jumlah Wilayah", fontsize=10)
     
-    # --- PERBAIKAN DI SINI ---
-    # Ganti 'ax.tick_params' dengan 'plt.setp' untuk mengatur 'ha'
-    # Ini akan mengambil semua label di sumbu x dan menerapkan rotasi & alignment
     plt.setp(ax.get_xticklabels(), rotation=30, ha='right')
-    # --- AKHIR PERBAIKAN ---
     
     fig.tight_layout()
-    # Sesuaikan 'bottom' untuk memberi ruang bagi label yang diputar
     fig.subplots_adjust(top=0.85, bottom=0.2) 
     return ringkasan, fig
 
@@ -205,260 +296,145 @@ def analisis_cluster(df: pd.DataFrame, fitur_digunakan, algoritma: str = ""):
 # --- FUNGSI TAMPILAN HASIL (PERBAIKAN + SILHOUETTE LANGSUNG) ---
 # --- FUNGSI TAMPILAN HASIL (PERBAIKAN PLOT SEBARAN + SILHOUETTE LANGSUNG) ---
 def display_clustering_results(
-    data_original, 
-    data_clustering, 
-    features_for_scaling, 
-    fitur_terpilih_base, 
-    selected_years, 
-    method_name, 
+    data_original,
+    data_clustering,
+    features_for_scaling,
+    fitur_terpilih_base,
+    selected_years,
+    method_name,
     plot_args
 ):
     """
-    Fungsi terpusat untuk menampilkan SEMUA visualisasi hasil.
-    Fungsi ini membaca dari st.session_state dan widget.
+    Fungsi terpusat untuk menampilkan SEMUA visualisasi hasil, dengan peta di bagian bawah.
     """
-    
+
+    # --- Visualisasi Sebaran Data Ternormalisasi ---
     st.subheader("Visualisasi Sebaran (Data Ternormalisasi)")
     plot_col1, plot_col2 = st.columns(2)
-    
-    feat_x = plot_col1.selectbox(
-        "Pilih Fitur Sumbu X", 
-        features_for_scaling, 
-        index=0, 
-        key=f"{method_name}_x"
-    )
+    feat_x = plot_col1.selectbox("Pilih Fitur Sumbu X", features_for_scaling, index=0, key=f"{method_name}_x")
     feat_y_index = 1 if len(features_for_scaling) > 1 else 0
-    feat_y = plot_col2.selectbox(
-        "Pilih Fitur Sumbu Y", 
-        features_for_scaling, 
-        index=feat_y_index, 
-        key=f"{method_name}_y"
-    )
+    feat_y = plot_col2.selectbox("Pilih Fitur Sumbu Y", features_for_scaling, index=feat_y_index, key=f"{method_name}_y")
 
-    # --- PERBAIKAN: Hapus fungsi impor dan gunakan seaborn ---
     fig_scatter, ax_scatter = plt.subplots(figsize=(8, 6))
-
-    # Tentukan kolom cluster berdasarkan metode
-    # K-Means sudah +1 (1, 2, 3), DBSCAN punya (-1, 0, 1)
-    # Kita akan memetakan label string 'Cluster_Label' untuk konsistensi
-    
-    # Ambil data ternormalisasi dan tambahkan label string-nya
     plot_data = data_clustering.copy()
-    plot_data['Cluster_Label'] = data_original['Cluster_Label']
-    
-    sns.scatterplot(
-        data=plot_data,
-        x=feat_x,
-        y=feat_y,
-        hue='Cluster_Label',
-        palette="Set1",
-        s=50,
-        alpha=0.7,
-        ax=ax_scatter
-    )
+    plot_data['Cluster_Label'] = data_original['Cluster_Label'] # Pastikan kolom ini ada
 
-    if method_name == "Intelligent K-Means":
-        # Ambil centroids (skala 0-1)
+    sns.scatterplot(data=plot_data, x=feat_x, y=feat_y, hue='Cluster_Label', palette="Set1", s=50, alpha=0.7, ax=ax_scatter)
+
+    if method_name == "Intelligent K-Means" and 'centroids' in plot_args:
         centroids = plot_args['centroids']
-        
-        # Cari tahu index kolom X dan Y dari daftar fitur
-        x_index = features_for_scaling.index(feat_x)
-        y_index = features_for_scaling.index(feat_y)
-        
-        # Plot centroid
-        ax_scatter.scatter(
-            centroids[:, x_index], 
-            centroids[:, y_index],
-            marker='X', 
-            s=200, 
-            c='black', 
-            edgecolor='white',
-            label='Centroids'
-        )
+        try:
+            x_index = features_for_scaling.index(feat_x)
+            y_index = features_for_scaling.index(feat_y)
+            ax_scatter.scatter(centroids[:, x_index], centroids[:, y_index], marker='X', s=200, c='black', edgecolor='white', label='Centroids')
+        except (ValueError, IndexError):
+            st.warning("Gagal memplot centroid karena ketidaksesuaian fitur.")
 
     ax_scatter.set_title(f"Visualisasi Sebaran Cluster ({method_name})")
     ax_scatter.set_xlabel(f"{feat_x} (Ternormalisasi)")
     ax_scatter.set_ylabel(f"{feat_y} (Ternormalisasi)")
-    # Paksa sumbu untuk 0-1
     ax_scatter.set_xlim(-0.1, 1.1)
     ax_scatter.set_ylim(-0.1, 1.1)
     ax_scatter.legend(title="Cluster", bbox_to_anchor=(1.05, 1), loc='upper left')
-    
     st.pyplot(fig_scatter)
-    # --- AKHIR PERBAIKAN ---
 
-
-    # --- VISUALISASI SILHOUETTE SCORE (TANPA EXPANDER) ---
+    # --- Visualisasi Silhouette Score ---
     st.markdown("---")
     st.subheader("Analisis Plot Silhouette")
-    
     data_matriks = data_clustering[features_for_scaling].values
     labels = plot_args['labels']
     n_clusters_unique = len(np.unique(labels))
-    
+
     if method_name == "DBSCAN":
         mask_non_noise = (labels != -1)
-        if np.sum(mask_non_noise) == 0:
-            st.info("Tidak ada poin yang ter-cluster (semua adalah noise). Plot Silhouette tidak dapat dibuat.")
-        else:
-            data_matriks_filtered = data_matriks[mask_non_noise]
+        if np.sum(mask_non_noise) > 0:
             labels_filtered = labels[mask_non_noise]
             n_clusters_filtered = len(np.unique(labels_filtered))
-            
             if n_clusters_filtered > 1:
-                st.write("Plot Silhouette (Hanya untuk poin yang ter-cluster, *noise* diabaikan):")
-                fig_sil = visualisasi_silhouette_full(
-                    data_matriks_filtered, 
-                    labels_filtered, 
-                    f"{method_name} (K={n_clusters_filtered})"
-                )
-                st.pyplot(fig_sil)
+                st.write("Plot Silhouette (Tanpa Noise):")
+                fig_sil = visualisasi_silhouette_full(data_matriks[mask_non_noise], labels_filtered, f"{method_name} (K={n_clusters_filtered})")
+                st.pyplot(fig_sil) # visualisasi_silhouette_full sudah memanggil st.pyplot
             else:
-                st.info("Plot Silhouette tidak dapat ditampilkan (kurang dari 2 cluster terbentuk, tidak termasuk noise).")
-    
-    elif method_name == "Intelligent K-Means":
-        if n_clusters_unique > 1:
-            fig_sil = visualisasi_silhouette_full(
-                data_matriks, 
-                labels, 
-                f"{method_name} (K={n_clusters_unique})"
-            )
-            st.pyplot(fig_sil)
+                st.info("Silhouette tidak ditampilkan (kurang dari 2 cluster tanpa noise).")
         else:
-            st.info("Plot Silhouette tidak dapat ditampilkan (K=1).")
-    
-    
-    st.subheader("Analisis Karakteristik Cluster (Data Asli)")
-    
-    # --- VISUALISASI PERMINTAAN #1: BAR CHART ---
-   # --- VISUALISASI PERMINTAAN #1: BAR CHART (LOGIKA LABEL BARU) ---
-    # --- VISUALISASI PERMINTAAN #1: BAR CHART ---
+            st.info("Semua data adalah noise, Silhouette tidak dapat dibuat.")
+    elif method_name == "Intelligent K-Means" and n_clusters_unique > 1:
+        fig_sil = visualisasi_silhouette_full(data_matriks, labels, f"{method_name} (K={n_clusters_unique})")
+        st.pyplot(fig_sil) # visualisasi_silhouette_full sudah memanggil st.pyplot
+    else:
+        st.info("Plot Silhouette tidak dapat ditampilkan (K=1).")
+
+    # --- Analisis Karakteristik Cluster ---
+    st.subheader("Analisis Karakteristik Cluster")
+
+    # --- Bar Chart Distribusi Anggota ---
     st.markdown("---")
     st.subheader("1. Distribusi Anggota Cluster (Bar Chart)")
-    
-    # 'Cluster_Label' sekarang sudah berisi label yang benar
-    # (misal: "Sejahtera" untuk K-Means, "Cluster 0" untuk DBSCAN)
-    df_ringkasan = data_original[['Cluster_Label']].rename(columns={"Cluster_Label": "Cluster"})
-    
-    ringkasan_df, fig_ringkasan = ringkasan_cluster(
-        df_ringkasan, 
-        f"Ringkasan Anggota Cluster ({method_name})"
-    )
-    st.pyplot(fig_ringkasan)
-    
-    # --- PERSIAPAN DATA LONG UNTUK VISUALISASI #2 & #3 ---
+    df_ringkasan_label = data_original[['Cluster_Label']].rename(columns={"Cluster_Label": "Cluster"})
+    ringkasan_df, fig_ringkasan = ringkasan_cluster(df_ringkasan_label, f"Ringkasan Anggota Cluster ({method_name})")
+    st.pyplot(fig_ringkasan) # ringkasan_cluster sudah memanggil st.pyplot
+
+    # --- Persiapan Data Long ---
     id_vars = ["Nama Wilayah", "Cluster_Label"]
-    if 'Cluster_Num' in data_original.columns: 
-        id_vars.append('Cluster_Num')
-    
-    data_long = data_original.melt(
-        id_vars=id_vars, 
-        value_vars=features_for_scaling, 
-        var_name="Fitur_Tahun", 
-        value_name="Nilai"
-    )
+    if 'Cluster_Num' in data_original.columns: id_vars.append('Cluster_Num')
+    data_long = data_original.melt(id_vars=id_vars, value_vars=features_for_scaling, var_name="Fitur_Tahun", value_name="Nilai")
     split_data = data_long['Fitur_Tahun'].str.rsplit('_', n=1, expand=True)
     data_long['Fitur'] = split_data[0]
     data_long['Tahun'] = split_data[1].astype(int)
-    
-    if 'Cluster_Num' in data_long.columns: 
-        data_long_no_noise = data_long[data_long['Cluster_Num'] != -1].copy()
-    else:
-        data_long_no_noise = data_long.copy() 
+    data_long_no_noise = data_long[data_long['Cluster_Num'] != -1].copy() if 'Cluster_Num' in data_long.columns else data_long.copy()
 
-    # --- VISUALISASI PERMINTAAN #2: BOXPLOT PER FITUR (DIPISAH PER TAHUN) ---
+    # --- Boxplot per Fitur ---
     st.markdown("---")
     st.subheader("2. Distribusi Fitur per Cluster (Boxplot per Tahun)")
-    base_feature_to_plot = st.selectbox(
-        "Pilih Fitur untuk Boxplot", 
-        fitur_terpilih_base, 
-        key=f"{method_name}_boxplot_feat"
-    )
-    
+    base_feature_to_plot = st.selectbox("Pilih Fitur untuk Boxplot", fitur_terpilih_base, key=f"{method_name}_boxplot_feat")
     df_boxplot = data_long_no_noise[data_long_no_noise['Fitur'] == base_feature_to_plot]
-    
     sorted_years = sorted(selected_years)
     cluster_order = sorted(df_boxplot['Cluster_Label'].unique())
-    n_years = len(sorted_years)
-
-    n_cols = min(n_years, 3) 
-    n_rows = (n_years + n_cols - 1) // n_cols 
-
-    fig, axes = plt.subplots(
-        n_rows, 
-        n_cols, 
-        figsize=(5 * n_cols, 4 * n_rows), 
-        squeeze=False 
-    )
-    axes = axes.flatten() 
-
+    n_years, n_cols = len(sorted_years), min(len(sorted_years), 3)
+    n_rows = (n_years + n_cols - 1) // n_cols
+    fig_box, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), squeeze=False)
+    axes = axes.flatten()
     for i, year in enumerate(sorted_years):
-        ax = axes[i] 
-        df_year = df_boxplot[df_boxplot['Tahun'] == year]
-        
-        sns.boxplot(
-            data=df_year, 
-            x='Cluster_Label', 
-            y='Nilai',         
-            hue='Cluster_Label', 
-            order=cluster_order, 
-            ax=ax,
-            legend=False 
-        )
-        ax.set_title(f"Tahun {year}")
-        ax.set_xlabel(None) 
-        ax.tick_params(axis='x', rotation=30) 
+        ax = axes[i]
+        sns.boxplot(data=df_boxplot[df_boxplot['Tahun'] == year], x='Cluster_Label', y='Nilai', hue='Cluster_Label', order=cluster_order, ax=ax, legend=False)
+        ax.set_title(f"Tahun {year}"); ax.set_xlabel(None); ax.tick_params(axis='x', rotation=30)
+    for j in range(n_years, len(axes)): fig_box.delaxes(axes[j])
+    fig_box.suptitle(f"Distribusi {base_feature_to_plot} per Cluster", fontsize=16)
+    fig_box.tight_layout(rect=[0, 0.03, 1, 0.95])
+    st.pyplot(fig_box)
 
-    for j in range(n_years, len(axes)):
-        fig.delaxes(axes[j])
-
-    fig.suptitle(f"Distribusi {base_feature_to_plot} per Cluster (Dipisah per Tahun)", fontsize=16)
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95]) 
-    st.pyplot(fig)
-
-
-    # --- VISUALISASI PERMINTAAN #3: SCATTER PLOT PERBANDINGAN TAHUN ---
+    # --- Scatter Plot Perbandingan Tahun ---
     if len(selected_years) >= 2:
         st.markdown("---")
         st.subheader("3. Perbandingan Antar Tahun (per Fitur)")
-        base_feature_scatter = st.selectbox(
-            "Pilih Fitur untuk Scatter Plot", 
-            fitur_terpilih_base, 
-            key=f"{method_name}_scatter_feat"
-        )
+        base_feature_scatter = st.selectbox("Pilih Fitur untuk Scatter Plot", fitur_terpilih_base, key=f"{method_name}_scatter_feat")
         col_scat1, col_scat2 = st.columns(2)
-        year_x = col_scat1.selectbox(
-            "Pilih Tahun Sumbu X", 
-            selected_years, 
-            index=0, 
-            key=f"{method_name}_scat_x"
-        )
-        year_y = col_scat2.selectbox(
-            "Pilih Tahun Sumbu Y", 
-            selected_years, 
-            index=len(selected_years)-1, 
-            key=f"{method_name}_scat_y"
-        )
-        
-        feat_x_scat = f"{base_feature_scatter}_{year_x}"
-        feat_y_scat = f"{base_feature_scatter}_{year_y}"
-        
-        fig_scatter, ax_scatter = plt.subplots(figsize=(8, 6))
-        sns.scatterplot(
-            data=data_original, 
-            x=feat_x_scat, 
-            y=feat_y_scat, 
-            hue='Cluster_Label', 
-            ax=ax_scatter, 
-            palette="Set1", s=50, alpha=0.7
-        )
-        ax_scatter.set_title(f"Perbandingan {base_feature_scatter}: {year_x} vs {year_y}")
-        ax_scatter.legend(title="Cluster", bbox_to_anchor=(1.05, 1), loc='upper left')
-        st.pyplot(fig_scatter)
-    
+        year_x = col_scat1.selectbox("Pilih Tahun Sumbu X", selected_years, index=0, key=f"{method_name}_scat_x")
+        year_y = col_scat2.selectbox("Pilih Tahun Sumbu Y", selected_years, index=len(selected_years)-1, key=f"{method_name}_scat_y")
+        feat_x_scat, feat_y_scat = f"{base_feature_scatter}_{year_x}", f"{base_feature_scatter}_{year_y}"
+        fig_scatter_comp, ax_scatter_comp = plt.subplots(figsize=(8, 6))
+        sns.scatterplot(data=data_original, x=feat_x_scat, y=feat_y_scat, hue='Cluster_Label', ax=ax_scatter_comp, palette="Set1", s=50, alpha=0.7)
+        ax_scatter_comp.set_title(f"Perbandingan {base_feature_scatter}: {year_x} vs {year_y}")
+        ax_scatter_comp.legend(title="Cluster", bbox_to_anchor=(1.05, 1), loc='upper left')
+        st.pyplot(fig_scatter_comp)
+
+    # --- Tabel Data Hasil ---
     st.subheader("Data Asli dengan Hasil Cluster")
     column_order = ["Nama Wilayah", "Cluster_Label"] + features_for_scaling
     st.dataframe(data_original[column_order], use_container_width=True)
+
+    # --- VISUALISASI PETA CLUSTERING (PINDAH KE SINI) ---
+    st.markdown("---") # Tambahkan pemisah
+    st.subheader("Peta Sebaran Cluster")
+    geojson_data = load_geojson('indonesia_kabupaten.geojson')
+
+    if geojson_data:
+        # Panggil fungsi independen untuk membuat objek peta
+        map_object = create_cluster_map(data_original, geojson_data)
+        
+        # Tampilkan peta di Streamlit
+        st_folium(map_object, use_container_width=True, height=600)
+        st.caption("Arahkan kursor ke wilayah untuk melihat namanya. Wilayah berwarna abu-abu tidak termasuk dalam analisis atau merupakan noise.")
 # =================================================================================
 # TAMPILAN ANTARMUKA STREAMLIT
 # =================================================================================
