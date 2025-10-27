@@ -8,7 +8,7 @@ import os
 import json
 import folium
 from streamlit_folium import st_folium
-
+import io
 # Impor fungsi-fungsi yang telah dipisah
 from utils import load_data, get_template_file 
 from clustering_algorithms import run_dbscan, run_intelligent_kmeans
@@ -365,6 +365,44 @@ def display_clustering_results(
     ax_scatter.legend(title="Cluster", bbox_to_anchor=(1.05, 1), loc='upper left')
     st.pyplot(fig_scatter)
 
+        # 1. Siapkan buffer di memori
+    buf_png = io.BytesIO()
+    # Simpan gambar ke buffer (gunakan bbox_inches='tight' agar legenda tidak terpotong)
+    fig_scatter.savefig(buf_png, format="png", bbox_inches='tight')
+
+    buf_pdf = io.BytesIO()
+    fig_scatter.savefig(buf_pdf, format="pdf", bbox_inches='tight')
+
+
+    st.markdown("""
+    <style>
+        [data-testid="stHorizontalBlock"] {
+            gap: 0.25rem; 
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    # 2. Buat kolom untuk tombol download
+    dl_col1, dl_col2 = st.columns(2)
+
+    with dl_col1:
+        st.download_button(
+            label="📥 Download as PNG",
+            data=buf_png.getvalue(),  # Ambil data bytes dari buffer
+            file_name=f"scatter_plot_{feat_x}_vs_{feat_y}.png",
+            mime="image/png",
+            use_container_width=True # Tambahkan ini agar tombol mengisi kolom
+        )
+
+    with dl_col2:
+        st.download_button(
+            label="📥 Download as PDF",
+            data=buf_pdf.getvalue(), # Ambil data bytes dari buffer
+            file_name=f"scatter_plot_{feat_x}_vs_{feat_y}.pdf",
+            mime="application/pdf",
+            use_container_width=True # Tambahkan ini agar tombol mengisi kolom
+        )
+    # --- AKHIR KODE TAMBAHAN ---
+    
     # --- Visualisasi Silhouette Score ---
     st.markdown("---")
     st.subheader("Analisis Plot Silhouette")
@@ -373,6 +411,11 @@ def display_clustering_results(
     label_map = plot_args.get('label_map', {})
     n_clusters_unique = len(np.unique(labels))
 
+    # --- PERUBAHAN DIMULAI DI SINI ---
+    # 1. Inisialisasi fig_sil sebagai None
+    fig_sil = None
+    plot_title = "silhouette_score" # Untuk nama file
+
     if method_name == "DBSCAN":
         mask_non_noise = (labels != -1)
         if np.sum(mask_non_noise) > 0:
@@ -380,19 +423,62 @@ def display_clustering_results(
             n_clusters_filtered = len(np.unique(labels_filtered))
             if n_clusters_filtered > 1:
                 st.write("Plot Silhouette (Tanpa Noise):")
-                fig_sil = visualisasi_silhouette_full(data_matriks[mask_non_noise], labels_filtered, label_map, f"{method_name} (K={n_clusters_filtered})")
-                st.pyplot(fig_sil) # visualisasi_silhouette_full sudah memanggil st.pyplot
+                plot_title = f"{method_name} (K={n_clusters_filtered})"
+                # 2. Buat figure, tapi JANGAN panggil st.pyplot dulu
+                fig_sil = visualisasi_silhouette_full(data_matriks[mask_non_noise], labels_filtered, label_map, plot_title)
             else:
                 st.info("Silhouette tidak ditampilkan (kurang dari 2 cluster tanpa noise).")
         else:
             st.info("Semua data adalah noise, Silhouette tidak dapat dibuat.")
     elif method_name == "Intelligent K-Means" and n_clusters_unique > 1:
+        plot_title = f"{method_name} (K={n_clusters_unique})"
+        # 2. Buat figure, tapi JANGAN panggil st.pyplot dulu
         fig_sil = visualisasi_silhouette_full(
-                data_matriks, labels, label_map, f"{method_name} (K={n_clusters_unique})"
+                data_matriks, labels, label_map, plot_title
             )  
-        st.pyplot(fig_sil) # visualisasi_silhouette_full sudah memanggil st.pyplot
     else:
         st.info("Plot Silhouette tidak dapat ditampilkan (K=1).")
+
+
+    # 3. Sekarang, cek apakah fig_sil BERHASIL dibuat
+    if fig_sil:
+        # 4. Jika berhasil, tampilkan plotnya
+        st.pyplot(fig_sil)
+
+        # 5. Siapkan buffer untuk download
+        buf_png = io.BytesIO()
+        fig_sil.savefig(buf_png, format="png", bbox_inches='tight')
+
+        buf_pdf = io.BytesIO()
+        fig_sil.savefig(buf_pdf, format="pdf", bbox_inches='tight')
+
+        # 6. Suntikkan CSS untuk merapatkan tombol
+        st.markdown("""
+        <style>
+            [data-testid="stHorizontalBlock"] {
+                gap: 0.25rem; 
+            }
+        </style>
+        """, unsafe_allow_html=True)
+
+        # 7. Buat tombol download
+        dl_col1, dl_col2 = st.columns(2)
+        with dl_col1:
+            st.download_button(
+                label="📥 Download as PNG",
+                data=buf_png.getvalue(),
+                file_name=f"silhouette_plot_{method_name}.png",
+                mime="image/png",
+                use_container_width=True
+            )
+        with dl_col2:
+            st.download_button(
+                label="📥 Download as PDF",
+                data=buf_pdf.getvalue(),
+                file_name=f"silhouette_plot_{method_name}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
 
     # --- Analisis Karakteristik Cluster ---
     st.subheader("Analisis Karakteristik Cluster")
@@ -404,6 +490,40 @@ def display_clustering_results(
     ringkasan_df, fig_ringkasan = ringkasan_cluster(df_ringkasan_label, f"Ringkasan Anggota Cluster ({method_name})")
     st.pyplot(fig_ringkasan) # ringkasan_cluster sudah memanggil st.pyplot
 
+    buf_png = io.BytesIO()
+    fig_ringkasan.savefig(buf_png, format="png", bbox_inches='tight')
+
+    buf_pdf = io.BytesIO()
+    fig_ringkasan.savefig(buf_pdf, format="pdf", bbox_inches='tight')
+
+    # 4. Suntikkan CSS untuk merapatkan tombol
+    st.markdown("""
+    <style>
+        [data-testid="stHorizontalBlock"] {
+            gap: 0.25rem; 
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # 5. Buat tombol download
+    dl_col1, dl_col2 = st.columns(2)
+    with dl_col1:
+        st.download_button(
+            label="📥 Download as PNG",
+            data=buf_png.getvalue(),
+            file_name=f"ringkasan_cluster_{method_name}.png",
+            mime="image/png",
+            use_container_width=True
+        )
+    with dl_col2:
+        st.download_button(
+            label="📥 Download as PDF",
+            data=buf_pdf.getvalue(),
+            file_name=f"ringkasan_cluster_{method_name}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+        
     # --- Persiapan Data Long ---
     id_vars = ["Nama Wilayah", "Cluster_Label"]
     if 'Cluster_Num' in data_original.columns: id_vars.append('Cluster_Num')
@@ -411,17 +531,18 @@ def display_clustering_results(
     split_data = data_long['Fitur_Tahun'].str.rsplit('_', n=1, expand=True)
     data_long['Fitur'] = split_data[0]
     data_long['Tahun'] = split_data[1].astype(int)
-    data_long_no_noise = data_long[data_long['Cluster_Num'] != -1].copy() if 'Cluster_Num' in data_long.columns else data_long.copy()
 
     # --- Boxplot per Fitur ---
     st.markdown("---")
     st.subheader("2. Distribusi Fitur per Cluster (Boxplot per Tahun)")
     base_feature_to_plot = st.selectbox("Pilih Fitur untuk Boxplot", fitur_terpilih_base, key=f"{method_name}_boxplot_feat")
-    df_boxplot = data_long_no_noise[data_long_no_noise['Fitur'] == base_feature_to_plot]
+    df_boxplot = data_long[data_long['Fitur'] == base_feature_to_plot]
     sorted_years = sorted(selected_years)
     cluster_order = sorted(df_boxplot['Cluster_Label'].unique())
     n_years, n_cols = len(sorted_years), min(len(sorted_years), 3)
     n_rows = (n_years + n_cols - 1) // n_cols
+
+    # 1. Figure Anda dibuat di sini
     fig_box, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), squeeze=False)
     axes = axes.flatten()
     for i, year in enumerate(sorted_years):
@@ -431,7 +552,46 @@ def display_clustering_results(
     for j in range(n_years, len(axes)): fig_box.delaxes(axes[j])
     fig_box.suptitle(f"Distribusi {base_feature_to_plot} per Cluster", fontsize=16)
     fig_box.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    # 2. Tampilkan plot di Streamlit
     st.pyplot(fig_box)
+
+    # --- MULAI KODE TAMBAHAN UNTUK DOWNLOAD ---
+
+    # 3. Siapkan buffer untuk download
+    buf_png = io.BytesIO()
+    fig_box.savefig(buf_png, format="png", bbox_inches='tight')
+
+    buf_pdf = io.BytesIO()
+    fig_box.savefig(buf_pdf, format="pdf", bbox_inches='tight')
+
+    # 4. Suntikkan CSS untuk merapatkan tombol
+    st.markdown("""
+    <style>
+        [data-testid="stHorizontalBlock"] {
+            gap: 0.25rem; 
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # 5. Buat tombol download
+    dl_col1, dl_col2 = st.columns(2)
+    with dl_col1:
+        st.download_button(
+            label="📥 Download as PNG",
+            data=buf_png.getvalue(),
+            file_name=f"boxplot_{base_feature_to_plot}_{method_name}.png",
+            mime="image/png",
+            use_container_width=True
+        )
+    with dl_col2:
+        st.download_button(
+            label="📥 Download as PDF",
+            data=buf_pdf.getvalue(),
+            file_name=f"boxplot_{base_feature_to_plot}_{method_name}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
 
     # --- Scatter Plot Perbandingan Tahun ---
     if len(selected_years) >= 2:
@@ -442,11 +602,53 @@ def display_clustering_results(
         year_x = col_scat1.selectbox("Pilih Tahun Sumbu X", selected_years, index=0, key=f"{method_name}_scat_x")
         year_y = col_scat2.selectbox("Pilih Tahun Sumbu Y", selected_years, index=len(selected_years)-1, key=f"{method_name}_scat_y")
         feat_x_scat, feat_y_scat = f"{base_feature_scatter}_{year_x}", f"{base_feature_scatter}_{year_y}"
+
+        # 1. Figure Anda dibuat di sini
         fig_scatter_comp, ax_scatter_comp = plt.subplots(figsize=(4, 3))
         sns.scatterplot(data=data_original, x=feat_x_scat, y=feat_y_scat, hue='Cluster_Label', ax=ax_scatter_comp, palette="Set1", s=50, alpha=0.7)
         ax_scatter_comp.set_title(f"Perbandingan {base_feature_scatter}: {year_x} vs {year_y}")
         ax_scatter_comp.legend(title="Cluster", bbox_to_anchor=(1.05, 1), loc='upper left')
+
+        # 2. Tampilkan plot di Streamlit
         st.pyplot(fig_scatter_comp)
+
+        # --- MULAI KODE TAMBAHAN UNTUK DOWNLOAD ---
+
+        # 3. Siapkan buffer untuk download
+        buf_png = io.BytesIO()
+        # Gunakan bbox_inches='tight' agar legenda tidak terpotong
+        fig_scatter_comp.savefig(buf_png, format="png", bbox_inches='tight')
+
+        buf_pdf = io.BytesIO()
+        fig_scatter_comp.savefig(buf_pdf, format="pdf", bbox_inches='tight')
+
+        # 4. Suntikkan CSS untuk merapatkan tombol
+        st.markdown("""
+        <style>
+            [data-testid="stHorizontalBlock"] {
+                gap: 0.25rem; 
+            }
+        </style>
+        """, unsafe_allow_html=True)
+
+        # 5. Buat tombol download
+        dl_col1, dl_col2 = st.columns(2)
+        with dl_col1:
+            st.download_button(
+                label="📥 Download as PNG",
+                data=buf_png.getvalue(),
+                file_name=f"perbandingan_{base_feature_scatter}_{year_x}_vs_{year_y}.png",
+                mime="image/png",
+                use_container_width=True
+            )
+        with dl_col2:
+            st.download_button(
+                label="📥 Download as PDF",
+                data=buf_pdf.getvalue(),
+                file_name=f"perbandingan_{base_feature_scatter}_{year_x}_vs_{year_y}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
 
     # --- Tabel Data Hasil ---
     st.subheader("Data Asli dengan Hasil Cluster")
