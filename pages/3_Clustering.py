@@ -363,9 +363,13 @@ def display_clustering_results(
     ax_scatter.set_xlim(-0.1, 1.1)
     ax_scatter.set_ylim(-0.1, 1.1)
     ax_scatter.legend(title="Cluster", bbox_to_anchor=(1.05, 1), loc='upper left')
-    st.pyplot(fig_scatter)
+    col_kiri, col_plot, col_kanan = st.columns([1, 3, 1])
 
-        # 1. Siapkan buffer di memori
+    # Gunakan 'with' untuk menempatkan plot di kolom tengah (col_plot)
+    with col_plot:
+        st.pyplot(fig_scatter, use_container_width=True)
+
+    # 1. Siapkan buffer di memori
     buf_png = io.BytesIO()
     # Simpan gambar ke buffer (gunakan bbox_inches='tight' agar legenda tidak terpotong)
     fig_scatter.savefig(buf_png, format="png", bbox_inches='tight')
@@ -443,7 +447,11 @@ def display_clustering_results(
     # 3. Sekarang, cek apakah fig_sil BERHASIL dibuat
     if fig_sil:
         # 4. Jika berhasil, tampilkan plotnya
-        st.pyplot(fig_sil)
+        col_kiri, col_plot, col_kanan = st.columns([1, 3, 1])
+    
+        with col_plot:
+            # Tampilkan plot di dalam kolom tengah
+            st.pyplot(fig_sil, use_container_width=True)
 
         # 5. Siapkan buffer untuk download
         buf_png = io.BytesIO()
@@ -488,7 +496,10 @@ def display_clustering_results(
     st.subheader("1. Distribusi Anggota Cluster (Bar Chart)")
     df_ringkasan_label = data_original[['Cluster_Label']].rename(columns={"Cluster_Label": "Cluster"})
     ringkasan_df, fig_ringkasan = ringkasan_cluster(df_ringkasan_label, f"Ringkasan Anggota Cluster ({method_name})")
-    st.pyplot(fig_ringkasan) # ringkasan_cluster sudah memanggil st.pyplot
+    col_kiri, col_plot, col_kanan = st.columns([1, 3, 1])
+    
+    with col_plot:
+        st.pyplot(fig_ringkasan) # ringkasan_cluster sudah memanggil st.pyplot
 
     buf_png = io.BytesIO()
     fig_ringkasan.savefig(buf_png, format="png", bbox_inches='tight')
@@ -554,6 +565,7 @@ def display_clustering_results(
     fig_box.tight_layout(rect=[0, 0.03, 1, 0.95])
 
     # 2. Tampilkan plot di Streamlit
+  
     st.pyplot(fig_box)
 
     # --- MULAI KODE TAMBAHAN UNTUK DOWNLOAD ---
@@ -610,7 +622,10 @@ def display_clustering_results(
         ax_scatter_comp.legend(title="Cluster", bbox_to_anchor=(1.05, 1), loc='upper left')
 
         # 2. Tampilkan plot di Streamlit
-        st.pyplot(fig_scatter_comp)
+        col_kiri, col_plot, col_kanan = st.columns([1, 3, 1])
+    
+        with col_plot:
+            st.pyplot(fig_scatter_comp)
 
         # --- MULAI KODE TAMBAHAN UNTUK DOWNLOAD ---
 
