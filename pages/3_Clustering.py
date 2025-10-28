@@ -9,6 +9,7 @@ import json
 import folium
 from streamlit_folium import st_folium
 import io
+import time
 # Impor fungsi-fungsi yang telah dipisah
 from utils import load_data, get_template_file 
 from clustering_algorithms import run_dbscan, run_intelligent_kmeans
@@ -837,7 +838,11 @@ if data is not None:
         if st.button("🚀 Jalankan Analisis DBSCAN", type="primary"):
             st.header("4. Hasil Analisis DBSCAN")
             with st.spinner("Menjalankan DBSCAN..."):
+                start_time = time.time()
                 dbscan, clusters = run_dbscan(features_scaled, eps_value, min_samples_value)
+                
+                end_time = time.time()
+                exec_time = end_time - start_time
                 
                 data_clustering['Cluster_Num'] = clusters
                 data_original['Cluster_Num'] = clusters
@@ -887,7 +892,7 @@ if data is not None:
                 st.session_state.features_for_scaling = features_for_scaling
                 st.session_state.fitur_terpilih_base = fitur_terpilih_base
                 st.session_state.selected_years = selected_years
-                st.session_state.metrics = {'n_clusters': n_clusters, 'n_noise': n_noise, 'score': score}
+                st.session_state.metrics = {'n_clusters': n_clusters, 'n_noise': n_noise, 'score': score, 'exec_time': exec_time}
                 st.session_state.plot_args = {'labels': clusters, 'dbscan_model': dbscan, 'label_map': label_map_dbscan}                
                 st.rerun()
 
@@ -897,9 +902,12 @@ if data is not None:
         if st.button("🚀 Jalankan Analisis Intelligent K-Means", type="primary"):
             st.header("4. Hasil Analisis Intelligent K-Means")
             st.subheader("Log Proses Real-time")
-            
+            start_time = time.time()
             # Ini (run_intelligent_kmeans) sudah ada st.spinner/logging di dalamnya
             final_labels, final_centroids_scaled, final_k = run_intelligent_kmeans(features_scaled, features_for_scaling)
+            
+            end_time = time.time()
+            exec_time = end_time - start_time
             
             st.success("🎉 Analisis Selesai!")
             st.markdown("---")
@@ -924,7 +932,7 @@ if data is not None:
             st.session_state.features_for_scaling = features_for_scaling
             st.session_state.fitur_terpilih_base = fitur_terpilih_base
             st.session_state.selected_years = selected_years
-            st.session_state.metrics = {'k': final_k, 'score': score}
+            st.session_state.metrics = {'k': final_k, 'score': score,'exec_time': exec_time}
             st.session_state.plot_args = {
                 'labels': final_labels, 
                 'centroids': final_centroids_scaled, 
@@ -950,14 +958,16 @@ if data is not None:
             metrics = st.session_state.metrics
             
             if st.session_state.method_name == "DBSCAN":
-                res_col1, res_col2, res_col3 = st.columns(3)
+                res_col1, res_col2, res_col3, res_col4 = st.columns(4)
                 res_col1.metric("Jumlah Klaster", metrics['n_clusters'])
                 res_col2.metric("Jumlah Noise/Outlier", metrics['n_noise'])
                 res_col3.metric("Silhouette Score (tanpa noise)", f"{metrics['score']:.3f}" if isinstance(metrics['score'], float) else "N/A")
+                res_col4.metric("Waktu Eksekusi", f"{metrics['exec_time']:.2f} detik")
             else:
-                res_col1, res_col2 = st.columns(2)
+                res_col1, res_col2, res_col3 = st.columns(3)
                 res_col1.metric("Jumlah Klaster Optimal (K)", metrics['k'])
                 res_col2.metric("Silhouette Score Final", f"{metrics['score']:.3f}")
+                res_col3.metric("Waktu Eksekusi", f"{metrics['exec_time']:.2f} detik")
 
             # --- Panggil Fungsi Display Terpusat ---
             display_clustering_results(
