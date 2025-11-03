@@ -859,12 +859,12 @@ if data is not None:
                 res_col1.metric("Jumlah Klaster", metrics['n_clusters'])
                 res_col2.metric("Jumlah Noise/Outlier", metrics['n_noise'])
                 res_col3.metric("Silhouette Score (tanpa noise)", f"{metrics['score']:.3f}" if isinstance(metrics['score'], float) else "N/A")
-                res_col4.metric("Waktu Eksekusi", f"{metrics['exec_time']:.2f} detik")
+                res_col4.metric("Waktu Eksekusi", f"{metrics['exec_time']:.4f} detik")
             else:
                 res_col1, res_col2, res_col3 = st.columns(3)
                 res_col1.metric("Jumlah Klaster Optimal (K)", metrics['k'])
                 res_col2.metric("Silhouette Score Final", f"{metrics['score']:.3f}")
-                res_col3.metric("Waktu Eksekusi", f"{metrics['exec_time']:.2f} detik")
+                res_col3.metric("Waktu Eksekusi", f"{metrics['exec_time']:.4f} detik")
 
             display_clustering_results(
                 data_original=st.session_state.data_original,
