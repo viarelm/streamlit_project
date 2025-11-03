@@ -8,7 +8,6 @@ st.set_page_config(
     layout='wide',
 )
 
-# Custom CSS dengan spacing yang lebih ketat
 st.markdown("""
 <style>
     .profile-img {
@@ -33,7 +32,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Hero Section - lebih compact
 col1, col2 = st.columns([1, 2], gap="medium")
 with col1:
     st.image("./assets/profile.jpeg", width=200, use_container_width=False, 
@@ -48,7 +46,6 @@ with col2:
     </div>
     """, unsafe_allow_html=True)
     
-    # --- TAMBAHAN BAGIAN LINK SOSIAL MEDIA ---
     st.markdown("""
     <div style="margin-top: 1rem;">
         <a href="https://github.com/viarelm" target="_blank" style="text-decoration: none; margin-right: 10px;">

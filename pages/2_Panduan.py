@@ -1,21 +1,16 @@
-# pages/1_📖_Panduan.py
-
 import streamlit as st
 
-# --- Konfigurasi Halaman ---
 st.set_page_config(
     page_title="Panduan Aplikasi",
     page_icon="📖",
     layout='wide',
 )
 
-# --- Judul Halaman ---
 st.title("📖 Panduan Aplikasi")
 st.write("Selamat datang! Halaman ini akan memandu Anda dalam menggunakan aplikasi pengelompokan komponen IPM.")
 
 st.divider()
 
-# --- Section 1: Penjelasan Umum ---
 st.header("1. Penjelasan Umum Aplikasi")
 
 st.markdown("""
@@ -34,7 +29,6 @@ Dataset yang diunggah akan melalui proses **standardisasi** menggunakan *MinMaxS
 
 st.divider()
 
-# --- Section 2: Format Dataset & Unduh Template ---
 st.header("2. Format Dataset dan Template")
 
 st.markdown("""
@@ -52,7 +46,6 @@ Untuk menggunakan fitur pengelompokan, Anda perlu mengunggah file dataset dengan
 Anda dapat mengunduh template dataset di bawah ini untuk memastikan format yang benar.
 """)
 
-# --- Fungsi tunggal untuk membaca file sebagai bytes ---
 @st.cache_data
 def get_file_as_bytes(file_path):
     try:
@@ -62,7 +55,6 @@ def get_file_as_bytes(file_path):
         st.error(f"File tidak ditemukan di path: {file_path}")
         return None
 
-# Tombol unduh untuk template dataset
 if template_bytes := get_file_as_bytes("assets/template_dataset.xlsx"):
     st.download_button(
         label="Unduh Template Dataset (.xlsx)",
@@ -73,14 +65,12 @@ if template_bytes := get_file_as_bytes("assets/template_dataset.xlsx"):
 
 st.divider()
 
-# --- Section 3: Unduh Buku Panduan ---
 st.header("3. Unduh Buku Panduan")
 
 st.markdown("""
 Untuk panduan yang lebih detail mengenai setiap fitur dan cara penggunaan, silakan unduh buku panduan lengkap dalam format PDF melalui tautan di bawah ini.
 """)
 
-# Tombol unduh untuk buku panduan
 if pdf_bytes := get_file_as_bytes("assets/buku_panduan.pdf"):
     st.download_button(
         label="Unduh Buku Panduan (.pdf)",

@@ -21,13 +21,11 @@ def load_data(source):
         st.error(f"Error memuat data: {e}")
         return None
 
-# Fungsi get_example_data_options() dihapus karena tidak lagi dipanggil oleh app.py
 
 @st.cache_data
 def get_template_file():
     """Memuat data template untuk di-download."""
     try:
-        # Asumsikan template_dataset.xlsx ada di root folder
         with open("assets/template_dataset.xlsx", "rb") as file:
             return file.read()
     except FileNotFoundError:

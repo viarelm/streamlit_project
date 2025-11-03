@@ -1,32 +1,26 @@
-# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+from streamlit_folium import st_folium
+
 from sklearn.metrics import silhouette_score, silhouette_samples
 import os
 import json
 import folium
-from streamlit_folium import st_folium
 import io
 import time
-# Impor fungsi-fungsi yang telah dipisah
+
 from utils import load_data, get_template_file 
 from clustering_algorithms import run_dbscan, run_intelligent_kmeans
 
-# --- TAMBAHAN: IMPOR UNTUK VISUALISASI TOOLKIT ---
 import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
-# --------------------------------------------------
 
 
-# =================================================================================
-# --- FUNGSI TOOLKIT ANALISIS & VISUALISASI ---
-# =================================================================================
 
-# Skema Label Cluster & Deskripsi
 skema_label = {
     2:  ["Sejahtera", "Tertinggal"],
     3:  ["Sejahtera", "Menengah", "Tertinggal"],
@@ -40,7 +34,6 @@ skema_label = {
     11: ["Sejahtera Tinggi", "Sejahtera", "Cukup Sejahtera", "Menengah Atas", "Menengah", "Menengah Bawah", "Cukup Rentan", "Rentan", "Sangat Rentan", "Tertinggal", "Tertinggal Berat"],
 }
 
-# ... (setelah blok `skema_label` Anda) ...
 
 @st.cache_data
 def load_geojson(path):
@@ -64,7 +57,6 @@ def create_cluster_map(df_clustered: pd.DataFrame, geojson_data: dict, base_feat
     colors = sns.color_palette("viridis", len(unique_labels)).as_hex()
     color_map = dict(zip(unique_labels, colors))
 
-    # --- LOGIKA BARU: Hitung rata-rata dan gabungkan data untuk tooltip ---
     geojson_data_copy = geojson_data.copy()
     data_dict = df_clustered.set_index('Nama Wilayah').to_dict('index')
 
@@ -90,9 +82,7 @@ def create_cluster_map(df_clustered: pd.DataFrame, geojson_data: dict, base_feat
                     average_value = sum(values) / len(values)
                     # Tambahkan properti baru untuk rata-rata
                     feature['properties'][f'Rata-rata {base_feat}'] = f"{average_value:.2f}"
-    # --- AKHIR LOGIKA BARU ---
 
-    # ---------------------------------------------------
 
     # Fungsi untuk mewarnai setiap wilayah pada peta
     def style_function(feature):
@@ -112,7 +102,6 @@ def create_cluster_map(df_clustered: pd.DataFrame, geojson_data: dict, base_feat
             'fillOpacity': fill_opacity
         }
 
-    # --- PERUBAHAN 3: PERBARUI FIELDS DAN ALIASES DI TOOLTIP ---
     # Dapatkan nama kolom fitur terbaru untuk ditampilkan
     fields_to_show = ['NAME_2', 'Cluster_Label'] + [f'Rata-rata {feat}' for feat in base_features]
     aliases_to_show = ['Wilayah:', 'Cluster:'] + [f'Rata-rata {feat}:' for feat in base_features]
@@ -130,9 +119,7 @@ def create_cluster_map(df_clustered: pd.DataFrame, geojson_data: dict, base_feat
             style=("background-color: white; color: #333333; font-family: arial; font-size: 12px; padding: 10px;")
         )
     ).add_to(m)
-    # --------------------------------------------------------------
 
-    # Buat legenda HTML kustom (tidak perlu diubah)
     legend_html = '''
         <div style="position: fixed; 
         bottom: 50px; left: 50px; width: auto; height: auto; 
@@ -154,22 +141,6 @@ def ambil_skema_label(jumlah_k: int):
     """Ambil daftar label cluster berdasarkan jumlah K."""
     return skema_label.get(jumlah_k, [f"Cluster {i+1}" for i in range(jumlah_k)])
 
-
-# =================================================================================
-# --- FUNGSI TOOLKIT ANALISIS & VISUALISASI ---
-# =================================================================================
-
-# Ringkasan Cluster (FUNGSI YANG DIPERBAIKI)
-# =================================================================================
-# --- FUNGSI TOOLKIT ANALISIS & VISUALISASI ---
-# =================================================================================
-
-# ... (Fungsi skema_label, ambil_skema_label, analisis_cluster Anda tetap di sini) ...
-
-
-# Ringkasan Cluster (FUNGSI YANG DIPERBAIKI)
-# Ganti fungsi ringkasan_cluster Anda dengan yang ini
-
 def ringkasan_cluster(df: pd.DataFrame, judul: str = "Ringkasan Cluster"):
     s = df["Cluster"]
     hitung = s.value_counts().sort_index()
@@ -182,26 +153,24 @@ def ringkasan_cluster(df: pd.DataFrame, judul: str = "Ringkasan Cluster"):
         "Persen": (hitung.values / total * 100).round(1)
     })
 
-    fig, ax = plt.subplots(figsize=(4, 3)) # Sedikit menambah tinggi figure secara keseluruhan
+    fig, ax = plt.subplots(figsize=(4, 3)) 
     warna = plt.cm.Blues(np.linspace(0.4, 0.8, k))
     
     ringkasan = ringkasan.sort_values(by="Cluster")
     
     bars = ax.bar(ringkasan["Cluster"].astype(str), ringkasan["Jumlah"], color=warna)
 
-    # --- PERBAIKAN UTAMA ADA DI SINI ---
-    # Tambahkan margin atas sebesar 20% (sebelumnya 10%)
-    # Ini memberikan ruang lebih bagi teks di atas bar tertinggi.
+
     ax.margins(y=0.2) 
     # ------------------------------------
 
     for bar, v, p in zip(bars, ringkasan["Jumlah"], ringkasan["Persen"]):
         ax.text(
             bar.get_x() + bar.get_width()/2, 
-            bar.get_height(), # Letakkan teks tepat di atas bar
+            bar.get_height(),
             f"{v}\n({p}%)", 
             ha="center", 
-            va="bottom", # Mulai teks dari atas bar ke atas
+            va="bottom", 
             fontsize=8
         )
 
@@ -216,8 +185,6 @@ def ringkasan_cluster(df: pd.DataFrame, judul: str = "Ringkasan Cluster"):
     return ringkasan, fig
 
 
-# ... (Fungsi visualisasi_silhouette_full dan display_clustering_results Anda tetap di sini) ...
-# --- TAMBAHAN BARU: FUNGSI PLOT SILHOUETTE ---
 def visualisasi_silhouette_full(data_matriks: np.ndarray, label_cluster: np.ndarray, label_map: dict, algo: str = ""):
     """
     Membuat plot silhouette untuk semua sampel.
@@ -253,8 +220,7 @@ def visualisasi_silhouette_full(data_matriks: np.ndarray, label_cluster: np.ndar
             alpha=0.7
         )
 
-        # --- PERUBAHAN UTAMA: Gunakan nama_label untuk teks ---
-        ax1.text(1.02, y_bawah + 0.5 * ukuran_i, nama_label, fontsize=8, ha='left', va='center')        # ----------------------------------------------------
+        ax1.text(1.02, y_bawah + 0.5 * ukuran_i, nama_label, fontsize=8, ha='left', va='center')    
         y_bawah = y_atas + 10
 
     ax1.set_title(f"Plot Silhouette ({algo})", fontsize=11, pad=10) 
@@ -279,7 +245,6 @@ def visualisasi_silhouette_full(data_matriks: np.ndarray, label_cluster: np.ndar
     plt.tight_layout(pad=1)
     return fig
 # Analisis Cluster
-# Analisis Cluster (DIPERBARUI UNTUK DBSCAN)
 def analisis_cluster(df: pd.DataFrame, fitur_digunakan, algoritma: str = ""):
     fitur_semua = fitur_digunakan
     fitur_negatif_heuristik = [f for f in fitur_semua if any(kata in f.upper() for kata in ["MISKIN", "P0", "P1", "P2"])]
@@ -294,12 +259,10 @@ def analisis_cluster(df: pd.DataFrame, fitur_digunakan, algoritma: str = ""):
     rata_c = df.groupby("Cluster")[fitur_semua].mean().round(3)
 
     # --- PERUBAHAN UNTUK DBSCAN ---
-    # Jangan buat label deskriptif jika ini DBSCAN
     if algoritma.upper() == "DBSCAN":
         label_cluster = {i: f"Cluster {i}" for i in rata_c.index}
-        skor = None # Skor tidak relevan untuk DBSCAN
+        skor = None
     
-    # Logika K-Means tetap sama
     else:
         skor = pd.Series(index=rata_c.index, dtype=float, data=0.0)
         if fitur_positif_heuristik:
@@ -316,13 +279,9 @@ def analisis_cluster(df: pd.DataFrame, fitur_digunakan, algoritma: str = ""):
 
         skema          = ambil_skema_label(k)
         label_cluster  = {urutan[i]: skema[i] for i in range(k)}
-    # --- AKHIR PERUBAHAN ---
     
     return rata_c, label_cluster, skor
 
-# Ringkasan Cluster
-# --- FUNGSI TAMPILAN HASIL (PERBAIKAN + SILHOUETTE LANGSUNG) ---
-# --- FUNGSI TAMPILAN HASIL (PERBAIKAN PLOT SEBARAN + SILHOUETTE LANGSUNG) ---
 def display_clustering_results(
     data_original,
     data_clustering,
@@ -345,7 +304,7 @@ def display_clustering_results(
 
     fig_scatter, ax_scatter = plt.subplots(figsize=(6, 5))
     plot_data = data_clustering.copy()
-    plot_data['Cluster_Label'] = data_original['Cluster_Label'] # Pastikan kolom ini ada
+    plot_data['Cluster_Label'] = data_original['Cluster_Label'] 
 
     sns.scatterplot(data=plot_data, x=feat_x, y=feat_y, hue='Cluster_Label', palette="Set1", s=50, alpha=0.7, ax=ax_scatter)
 
@@ -366,13 +325,10 @@ def display_clustering_results(
     ax_scatter.legend(title="Cluster", bbox_to_anchor=(1.05, 1), loc='upper left')
     col_kiri, col_plot, col_kanan = st.columns([1, 3, 1])
 
-    # Gunakan 'with' untuk menempatkan plot di kolom tengah (col_plot)
     with col_plot:
         st.pyplot(fig_scatter, use_container_width=True)
 
-    # 1. Siapkan buffer di memori
     buf_png = io.BytesIO()
-    # Simpan gambar ke buffer (gunakan bbox_inches='tight' agar legenda tidak terpotong)
     fig_scatter.savefig(buf_png, format="png", bbox_inches='tight')
 
     buf_pdf = io.BytesIO()
@@ -386,27 +342,25 @@ def display_clustering_results(
         }
     </style>
     """, unsafe_allow_html=True)
-    # 2. Buat kolom untuk tombol download
     dl_col1, dl_col2 = st.columns(2)
 
     with dl_col1:
         st.download_button(
             label="📥 Download as PNG",
-            data=buf_png.getvalue(),  # Ambil data bytes dari buffer
+            data=buf_png.getvalue(),  
             file_name=f"scatter_plot_{feat_x}_vs_{feat_y}.png",
             mime="image/png",
-            use_container_width=True # Tambahkan ini agar tombol mengisi kolom
+            use_container_width=True 
         )
 
     with dl_col2:
         st.download_button(
             label="📥 Download as PDF",
-            data=buf_pdf.getvalue(), # Ambil data bytes dari buffer
+            data=buf_pdf.getvalue(), 
             file_name=f"scatter_plot_{feat_x}_vs_{feat_y}.pdf",
             mime="application/pdf",
-            use_container_width=True # Tambahkan ini agar tombol mengisi kolom
+            use_container_width=True 
         )
-    # --- AKHIR KODE TAMBAHAN ---
     
     # --- Visualisasi Silhouette Score ---
     st.markdown("---")
@@ -416,10 +370,9 @@ def display_clustering_results(
     label_map = plot_args.get('label_map', {})
     n_clusters_unique = len(np.unique(labels))
 
-    # --- PERUBAHAN DIMULAI DI SINI ---
     # 1. Inisialisasi fig_sil sebagai None
     fig_sil = None
-    plot_title = "silhouette_score" # Untuk nama file
+    plot_title = "silhouette_score" 
 
     if method_name == "DBSCAN":
         mask_non_noise = (labels != -1)
@@ -429,7 +382,6 @@ def display_clustering_results(
             if n_clusters_filtered > 1:
                 st.write("Plot Silhouette (Tanpa Noise):")
                 plot_title = f"{method_name} (K={n_clusters_filtered})"
-                # 2. Buat figure, tapi JANGAN panggil st.pyplot dulu
                 fig_sil = visualisasi_silhouette_full(data_matriks[mask_non_noise], labels_filtered, label_map, plot_title)
             else:
                 st.info("Silhouette tidak ditampilkan (kurang dari 2 cluster tanpa noise).")
@@ -437,7 +389,6 @@ def display_clustering_results(
             st.info("Semua data adalah noise, Silhouette tidak dapat dibuat.")
     elif method_name == "Intelligent K-Means" and n_clusters_unique > 1:
         plot_title = f"{method_name} (K={n_clusters_unique})"
-        # 2. Buat figure, tapi JANGAN panggil st.pyplot dulu
         fig_sil = visualisasi_silhouette_full(
                 data_matriks, labels, label_map, plot_title
             )  
@@ -445,23 +396,18 @@ def display_clustering_results(
         st.info("Plot Silhouette tidak dapat ditampilkan (K=1).")
 
 
-    # 3. Sekarang, cek apakah fig_sil BERHASIL dibuat
     if fig_sil:
-        # 4. Jika berhasil, tampilkan plotnya
         col_kiri, col_plot, col_kanan = st.columns([1, 3, 1])
     
         with col_plot:
-            # Tampilkan plot di dalam kolom tengah
             st.pyplot(fig_sil, use_container_width=True)
 
-        # 5. Siapkan buffer untuk download
         buf_png = io.BytesIO()
         fig_sil.savefig(buf_png, format="png", bbox_inches='tight')
 
         buf_pdf = io.BytesIO()
         fig_sil.savefig(buf_pdf, format="pdf", bbox_inches='tight')
 
-        # 6. Suntikkan CSS untuk merapatkan tombol
         st.markdown("""
         <style>
             [data-testid="stHorizontalBlock"] {
@@ -470,7 +416,6 @@ def display_clustering_results(
         </style>
         """, unsafe_allow_html=True)
 
-        # 7. Buat tombol download
         dl_col1, dl_col2 = st.columns(2)
         with dl_col1:
             st.download_button(
@@ -489,7 +434,6 @@ def display_clustering_results(
                 use_container_width=True
             )
 
-    # --- Analisis Karakteristik Cluster ---
     st.subheader("Analisis Karakteristik Cluster")
 
     # --- Bar Chart Distribusi Anggota ---
@@ -500,7 +444,7 @@ def display_clustering_results(
     col_kiri, col_plot, col_kanan = st.columns([1, 3, 1])
     
     with col_plot:
-        st.pyplot(fig_ringkasan) # ringkasan_cluster sudah memanggil st.pyplot
+        st.pyplot(fig_ringkasan) 
 
     buf_png = io.BytesIO()
     fig_ringkasan.savefig(buf_png, format="png", bbox_inches='tight')
@@ -508,7 +452,6 @@ def display_clustering_results(
     buf_pdf = io.BytesIO()
     fig_ringkasan.savefig(buf_pdf, format="pdf", bbox_inches='tight')
 
-    # 4. Suntikkan CSS untuk merapatkan tombol
     st.markdown("""
     <style>
         [data-testid="stHorizontalBlock"] {
@@ -517,7 +460,6 @@ def display_clustering_results(
     </style>
     """, unsafe_allow_html=True)
 
-    # 5. Buat tombol download
     dl_col1, dl_col2 = st.columns(2)
     with dl_col1:
         st.download_button(
@@ -536,7 +478,6 @@ def display_clustering_results(
             use_container_width=True
         )
         
-    # --- Persiapan Data Long ---
     id_vars = ["Nama Wilayah", "Cluster_Label"]
     if 'Cluster_Num' in data_original.columns: id_vars.append('Cluster_Num')
     data_long = data_original.melt(id_vars=id_vars, value_vars=features_for_scaling, var_name="Fitur_Tahun", value_name="Nilai")
@@ -544,7 +485,6 @@ def display_clustering_results(
     data_long['Fitur'] = split_data[0]
     data_long['Tahun'] = split_data[1].astype(int)
 
-    # --- Boxplot per Fitur ---
     st.markdown("---")
     st.subheader("2. Distribusi Fitur per Cluster (Boxplot per Tahun)")
     base_feature_to_plot = st.selectbox("Pilih Fitur untuk Boxplot", fitur_terpilih_base, key=f"{method_name}_boxplot_feat")
@@ -554,7 +494,6 @@ def display_clustering_results(
     n_years, n_cols = len(sorted_years), min(len(sorted_years), 3)
     n_rows = (n_years + n_cols - 1) // n_cols
 
-    # 1. Figure Anda dibuat di sini
     fig_box, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), squeeze=False)
     axes = axes.flatten()
     for i, year in enumerate(sorted_years):
@@ -565,20 +504,15 @@ def display_clustering_results(
     fig_box.suptitle(f"Distribusi {base_feature_to_plot} per Cluster", fontsize=16)
     fig_box.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-    # 2. Tampilkan plot di Streamlit
   
     st.pyplot(fig_box)
 
-    # --- MULAI KODE TAMBAHAN UNTUK DOWNLOAD ---
-
-    # 3. Siapkan buffer untuk download
     buf_png = io.BytesIO()
     fig_box.savefig(buf_png, format="png", bbox_inches='tight')
 
     buf_pdf = io.BytesIO()
     fig_box.savefig(buf_pdf, format="pdf", bbox_inches='tight')
 
-    # 4. Suntikkan CSS untuk merapatkan tombol
     st.markdown("""
     <style>
         [data-testid="stHorizontalBlock"] {
@@ -587,7 +521,6 @@ def display_clustering_results(
     </style>
     """, unsafe_allow_html=True)
 
-    # 5. Buat tombol download
     dl_col1, dl_col2 = st.columns(2)
     with dl_col1:
         st.download_button(
@@ -606,7 +539,6 @@ def display_clustering_results(
             use_container_width=True
         )
 
-    # --- Scatter Plot Perbandingan Tahun ---
     if len(selected_years) >= 2:
         st.markdown("---")
         st.subheader("3. Perbandingan Antar Tahun (per Fitur)")
@@ -622,23 +554,18 @@ def display_clustering_results(
         ax_scatter_comp.set_title(f"Perbandingan {base_feature_scatter}: {year_x} vs {year_y}")
         ax_scatter_comp.legend(title="Cluster", bbox_to_anchor=(1.05, 1), loc='upper left')
 
-        # 2. Tampilkan plot di Streamlit
         col_kiri, col_plot, col_kanan = st.columns([1, 3, 1])
     
         with col_plot:
             st.pyplot(fig_scatter_comp)
 
-        # --- MULAI KODE TAMBAHAN UNTUK DOWNLOAD ---
 
-        # 3. Siapkan buffer untuk download
         buf_png = io.BytesIO()
-        # Gunakan bbox_inches='tight' agar legenda tidak terpotong
         fig_scatter_comp.savefig(buf_png, format="png", bbox_inches='tight')
 
         buf_pdf = io.BytesIO()
         fig_scatter_comp.savefig(buf_pdf, format="pdf", bbox_inches='tight')
 
-        # 4. Suntikkan CSS untuk merapatkan tombol
         st.markdown("""
         <style>
             [data-testid="stHorizontalBlock"] {
@@ -647,7 +574,6 @@ def display_clustering_results(
         </style>
         """, unsafe_allow_html=True)
 
-        # 5. Buat tombol download
         dl_col1, dl_col2 = st.columns(2)
         with dl_col1:
             st.download_button(
@@ -666,30 +592,22 @@ def display_clustering_results(
                 use_container_width=True
             )
 
-    # --- Tabel Data Hasil ---
     st.subheader("Data Asli dengan Hasil Cluster")
     column_order = ["Nama Wilayah", "Cluster_Label"] + features_for_scaling
     st.dataframe(data_original[column_order], use_container_width=True)
 
-    # --- VISUALISASI PETA CLUSTERING (PINDAH KE SINI) ---
-    st.markdown("---") # Tambahkan pemisah
+    st.markdown("---") 
     st.subheader("Peta Sebaran Cluster")
     geojson_data = load_geojson('indonesia_kabupaten.geojson')
 
     if geojson_data:
-        # Panggil fungsi independen untuk membuat objek peta
         map_object = create_cluster_map(data_original, geojson_data, fitur_terpilih_base)        
-        # Tampilkan peta di Streamlit
         st_folium(map_object, use_container_width=True, height=600)
         st.caption("Arahkan kursor ke wilayah untuk melihat namanya. Wilayah berwarna abu-abu tidak termasuk dalam analisis atau merupakan noise.")
-# =================================================================================
-# TAMPILAN ANTARMUKA STREAMLIT
-# =================================================================================
 
 st.set_page_config(page_title="Clustering", page_icon="🔬", layout="wide")
 st.title("🔬 Laman Analisis Clustering")
 
-# --- 1. Konfigurasi Analisis ---
 st.header("1. Konfigurasi Analisis")
 col1, col2 = st.columns([1, 2])
 
@@ -707,11 +625,9 @@ with col2:
         label_visibility="collapsed"
     )
 
-# --- 2. Input Data ---
 st.header("2. Input Data & Fitur")
 data = None
 
-# Mapping Fitur
 mapping_fitur = {
     "Indeks Pembangunan Manusia Laki-Laki": "IPM_L",
     "Indeks Pembangunan Manusia Perempuan": "IPM_P",
@@ -721,7 +637,6 @@ mapping_fitur = {
     "Pengeluaran Per Kapita Perempuan": "PKP_P"
 }
 
-# ... (Logika load_data dan download template sama) ...
 if data_source_option == "Gunakan Contoh Dataset":
     dataset_path = "contoh_dataset/dataset.xlsx"
     if os.path.exists(dataset_path):
@@ -747,11 +662,9 @@ if data is not None:
     if "Label" in data.columns:
         data = data.rename(columns={"Label": "Nama Wilayah"})
 
-# --- 3. Filter & Persiapan Data ---
 if data is not None:
     st.subheader("Filter Data dan Fitur")
 
-    # ... (Validasi kolom sama) ...
     if "Tahun" not in data.columns:
         st.error("Dataset Error: Kolom 'Tahun' tidak ditemukan. Silakan periksa template.")
         st.stop()
@@ -778,7 +691,6 @@ if data is not None:
         st.warning("Silakan pilih minimal satu tahun dan satu fitur.")
         st.stop()
     
-    # ... (Logika pivot data sama) ...
     data_to_pivot = data[data["Tahun"].isin(selected_years)].copy()
     data_to_pivot = data_to_pivot[["Nama Wilayah", "Tahun"] + fitur_terpilih_base]
 
@@ -826,7 +738,6 @@ if data is not None:
     st.write("Data ternormalisasi yang siap di-cluster (Pratinjau):")
     st.dataframe(data_clustering.head(), use_container_width=True)
 
-    # --- 4. Parameter & Eksekusi (HANYA KOMPUTASI & PENYIMPANAN STATE) ---
     st.header("3. Parameter & Eksekusi")
     
     if selected_method == "DBSCAN":
@@ -856,35 +767,27 @@ if data is not None:
                     score = silhouette_score(features_scaled[mask_non_noise], clusters[mask_non_noise])
                 
                 data_original_no_noise = data_original[data_original['Cluster_Num'] != -1].copy()
-                # Ganti nama 'Cluster_Num' -> 'Cluster' untuk groupby
                 data_original_no_noise = data_original_no_noise.rename(columns={'Cluster_Num': 'Cluster'})
 
                 if n_clusters > 0:
-                    # Panggil analisis_cluster HANYA untuk mendapatkan rata_c
-                    # Kita akan mengabaikan 'label_cluster' yang dihasilkannya
                     rata_c, _, _ = analisis_cluster(
                         data_original_no_noise, 
                         features_for_scaling, 
-                        "DBSCAN" # Kirim nama algoritma
+                        "DBSCAN" 
                     )
                     st.write("Rata-rata Indikator per Cluster (Tanpa Noise):")
                     st.dataframe(rata_c, use_container_width=True)
                 
-                # --- PERUBAHAN LABEL DBSCAN DI SINI ---
-                # Buat 'Cluster_Label' secara manual, bukan dari analisis_cluster
                 data_original['Cluster_Label'] = data_original['Cluster_Num'].apply(
                     lambda x: "Noise (-1)" if x == -1 else f"Cluster {x+1}"
                 )
                 
                 unique_labels_dbscan = np.unique(clusters)
-                    # Balikkan proses lambda untuk membuat kamus: {nomor: "Label Deskriptif"}
                 label_map_dbscan = {
                     label: "Noise / Outlier" if label == -1 else f"Cluster {label + 1}"
                     for label in unique_labels_dbscan
                 }
-                # --- AKHIR PERUBAHAN ---
 
-                # --- SIMPAN HASIL KE SESSION STATE ---
                 st.session_state.clustering_complete = True
                 st.session_state.method_name = "DBSCAN"
                 st.session_state.data_original = data_original.copy()
@@ -903,7 +806,6 @@ if data is not None:
             st.header("4. Hasil Analisis Intelligent K-Means")
             st.subheader("Log Proses Real-time")
             start_time = time.time()
-            # Ini (run_intelligent_kmeans) sudah ada st.spinner/logging di dalamnya
             final_labels, final_centroids_scaled, final_k = run_intelligent_kmeans(features_scaled, features_for_scaling)
             
             end_time = time.time()
@@ -924,7 +826,6 @@ if data is not None:
             )
             data_original['Cluster_Label'] = data_original['Cluster'].map(label_cluster)
             label_map_for_silhouette = {k - 1: v for k, v in label_cluster.items()}
-            # --- SIMPAN HASIL KE SESSION STATE ---
             st.session_state.clustering_complete = True
             st.session_state.method_name = "Intelligent K-Means"
             st.session_state.data_original = data_original.copy()
@@ -940,20 +841,16 @@ if data is not None:
                 'label_map': label_map_for_silhouette
             }
             
-            st.rerun() # Paksa script run ulang untuk masuk ke blok display
+            st.rerun() 
 
-    # --- 5. BLOK TAMPILAN HASIL (MEMBACA DARI SESSION STATE) ---
     if 'clustering_complete' in st.session_state and st.session_state.clustering_complete:
         
-        # Jika user ganti metode, jangan tampilkan hasil lama
         if st.session_state.method_name != selected_method:
             st.warning(f"Anda mengganti metode ke {selected_method}. Harap jalankan ulang analisis.")
-            # Hapus state lama
             for key in list(st.session_state.keys()):
                 if key.startswith('clustering_') or key.startswith('data_') or key.startswith('metrics_'):
                     del st.session_state[key]
         else:
-            # --- Tampilkan Metrik ---
             st.header(f"4. Hasil Analisis {st.session_state.method_name}")
             metrics = st.session_state.metrics
             
@@ -969,7 +866,6 @@ if data is not None:
                 res_col2.metric("Silhouette Score Final", f"{metrics['score']:.3f}")
                 res_col3.metric("Waktu Eksekusi", f"{metrics['exec_time']:.2f} detik")
 
-            # --- Panggil Fungsi Display Terpusat ---
             display_clustering_results(
                 data_original=st.session_state.data_original,
                 data_clustering=st.session_state.data_clustering,
