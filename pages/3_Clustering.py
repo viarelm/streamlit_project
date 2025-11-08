@@ -736,8 +736,8 @@ if data is not None:
     st.success("Data telah dinormalisasi menggunakan MinMaxScaler (skala 0-1).")
     
     st.write("Data ternormalisasi yang siap di-cluster (Pratinjau):")
-    st.dataframe(data_clustering.head(), use_container_width=True)
-
+    st.dataframe(data_clustering, use_container_width=True)
+    
     st.header("3. Parameter & Eksekusi")
     
     if selected_method == "DBSCAN":
