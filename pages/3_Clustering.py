@@ -744,7 +744,7 @@ if data is not None:
         st.subheader("Parameter DBSCAN")
         col1_param, col2_param = st.columns(2)
         eps_value = col1_param.slider("Epsilon (eps)", 0.01, 1.0, 0.64, 0.01)
-        min_samples_value = col2_param.slider("Minimum Samples (min_pts)", 2, 100, 7, 1)
+        min_samples_value = col2_param.slider("Minimum Samples (min_pts)", 1, 100, 7, 1)
         
         if st.button("🚀 Jalankan Analisis DBSCAN", type="primary"):
             st.header("4. Hasil Analisis DBSCAN")
