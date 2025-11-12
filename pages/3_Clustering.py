@@ -257,10 +257,11 @@ def analisis_cluster(df: pd.DataFrame, fitur_digunakan, algoritma: str = ""):
     """)
 
     rata_c = df.groupby("Cluster")[fitur_semua].mean().round(3)
+    
+    label_cluster = {i: f"Cluster {i}" for i in rata_c.index}
 
     # --- PERUBAHAN UNTUK DBSCAN ---
     if algoritma.upper() == "DBSCAN":
-        label_cluster = {i: f"Cluster {i}" for i in rata_c.index}
         skor = None
     
     else:
@@ -272,13 +273,6 @@ def analisis_cluster(df: pd.DataFrame, fitur_digunakan, algoritma: str = ""):
         
         if not fitur_positif_heuristik and not fitur_negatif_heuristik and not skor.any():
             skor = rata_c[fitur_semua].mean(axis=1) 
-
-        ranking = skor.sort_values(ascending=False)
-        urutan  = ranking.index.tolist()
-        k       = len(ranking)
-
-        skema          = ambil_skema_label(k)
-        label_cluster  = {urutan[i]: skema[i] for i in range(k)}
     
     return rata_c, label_cluster, skor
 
